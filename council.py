@@ -894,7 +894,7 @@ class Council:
         archive_result = self.archivist.archive(task, bb)
         self._emit(bb, archive_result.agent, archive_result.message)
 
-        return bb.snapshot()
+        yield bb.snapshot()
 
     def stats(self) -> Dict:
         return {
@@ -908,6 +908,16 @@ class Council:
 
     @staticmethod
     def _emit(bb: Blackboard, agent: str, message: str) -> None:
+        """Log an agent action to the Blackboard audit log."""
+        # Store with 'message' key so the dashboard can display it directly
+        bb.agent_call_log.append({
+            "round": bb.round,
+            "agent": agent,
+            "action": "speak",
+            "message": message,
+            "data": {},
+            "timestamp": round(time.time(), 3),
+        })
         log.info("[Round %02d | %s] %s", bb.round, agent, message)
 
 
