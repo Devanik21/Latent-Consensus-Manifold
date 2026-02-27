@@ -844,19 +844,19 @@ class Council:
                         break   # restart round
 
                 elif agent_name == "CausalReasoner":
+                    # Capture the top pending hypothesis BEFORE causal.verify changes its status
+                    top_h_before = bb.get_top_hypothesis()
                     result = self.causal.verify(task, bb)
                     self._emit(bb, result.agent, result.message)
                     yield bb.snapshot()
 
-                    if result.success:
-                        # Causal law confirmed → declare solved
-                        top_h = bb.get_top_hypothesis()
-                        if top_h and top_h.status == HypothesisStatus.CAUSAL_LAW:
-                            bb.update_hypothesis(top_h.id, status=HypothesisStatus.ACCEPTED)
-                            bb.declare_answer(top_h.grid, "solved", "Council")
-                            self._emit(bb, "Council", f"SOLVED in {bb.round} rounds!")
-                            yield bb.snapshot()
-                    else:
+                    if result.success and top_h_before is not None:
+                        # Causal law confirmed → accept and declare solved
+                        bb.update_hypothesis(top_h_before.id, status=HypothesisStatus.ACCEPTED)
+                        bb.declare_answer(top_h_before.grid, "solved", "Council")
+                        self._emit(bb, "Council", f"SOLVED in {bb.round} rounds! Program: {top_h_before.program}")
+                        yield bb.snapshot()
+                    elif not result.success:
                         curiosity_directive = "DREAMER_EXPLORE_LOW_CONFIDENCE"
                         break
 
@@ -883,12 +883,20 @@ class Council:
                 if bb.final_verdict != "pending":
                     break
 
-            # Curiosity engine observation every round
-            top_h = bb.get_top_hypothesis()
-            if top_h is not None:
-                curiosity_result = self.curiosity.observe(top_h.grid, task.test_output, bb)
-                curiosity_directive = curiosity_result.data.get("directive")
-                self._emit(bb, curiosity_result.agent, curiosity_result.message)
+            # Curiosity engine end-of-round observation (once per round, best hypothesis)
+            if bb.final_verdict == "pending":
+                top_h = bb.get_top_hypothesis()
+                if top_h is None:
+                    # No PENDING hypotheses; pick best non-falsified
+                    candidates = [h for h in bb.hypothesis_stack
+                                  if h.status not in (HypothesisStatus.FALSIFIED, HypothesisStatus.COINCIDENCE)
+                                  and h.grid is not None]
+                    if candidates:
+                        top_h = max(candidates, key=lambda h: h.confidence)
+                if top_h is not None:
+                    curiosity_result = self.curiosity.observe(top_h.grid, task.test_output, bb)
+                    curiosity_directive = curiosity_result.data.get("directive")
+                    self._emit(bb, curiosity_result.agent, curiosity_result.message)
 
         # ── PHASE 5: ARCHIVAL ─────────────────────────────────────────────────
         archive_result = self.archivist.archive(task, bb)

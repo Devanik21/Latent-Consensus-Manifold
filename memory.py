@@ -62,6 +62,7 @@ class Hypothesis:
             "mdl_score": round(self.program_mdl, 4) if self.program_mdl else None,
             "causal_verdict": self.causal_verdict,
             "contradiction_count": self.contradiction_count,
+            "grid": self.grid.tolist() if self.grid is not None else None,
         }
 
 
