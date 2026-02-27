@@ -20,7 +20,7 @@ from council import Council, DSL
 # ─── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Neuro-Symbolic Collective — AGI Lab",
-    page_icon="🧠",
+    page_icon="🌑",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -181,7 +181,7 @@ def _agent_html(agent: str, message: str, rnd: int) -> str:
     icon_map = {
         "Perceiver": "👁️", "Dreamer": "💭", "Scientist": "🔬",
         "Skeptic": "🔴", "Philosopher": "🏛️", "CausalReasoner": "🕸️",
-        "CuriosityEngine": "⚡", "Metacognitor": "🧠", "Archivist": "📚",
+        "CuriosityEngine": "⚡", "Metacognitor": "", "Archivist": "📚",
         "Council": "🏆", "Orientation": "🚀",
     }
     icon = icon_map.get(agent, "•")
@@ -247,7 +247,7 @@ def _answer_grid(task: ARCTask, snap: dict) -> np.ndarray | None:
 
 # ─── SIDEBAR ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🧠 Neuro-Symbolic Collective")
+    st.markdown("##  Neuro-Symbolic Collective")
     st.caption(f"Session seed `{st.session_state.seed}`")
     st.divider()
 
@@ -279,7 +279,7 @@ with st.sidebar:
     st.caption("0-Cheat · Zero Memorisation · Full Transparency")
 
 # ─── HEADER ───────────────────────────────────────────────────────────────────
-st.markdown("# 🧠 The Neuro-Symbolic Collective")
+st.markdown("#  The Neuro-Symbolic Collective")
 st.markdown("**9-Agent AGI Research System — Inference-Time Discovery on ARC-AGI-2**")
 
 mc = st.columns(4)
@@ -430,7 +430,7 @@ with tab1:
 
         panels = [(task.test_input, "Test Input")]
         if answer is not None:
-            panels.append((answer, "Council's Answer 🧠"))
+            panels.append((answer, "Council's Answer "))
         panels.append((task.test_output, "Ground Truth ✓"))
 
         fig = _grid_fig(panels, cols=len(panels), cell_size=3.0)
