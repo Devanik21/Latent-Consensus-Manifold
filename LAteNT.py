@@ -661,6 +661,8 @@ with tab4:
                 "Contradictions": h.get("contradiction_count", 0),
             })
         df = pd.DataFrame(rows)
+        df['MDL'] = df['MDL'].astype(str)
+        df['Causal'] = df['Causal'].astype(str)
         st.dataframe(
             df,
             hide_index=True,
@@ -1877,3 +1879,4 @@ with tab7:
         )
     else:
         _no_data("Need surprise + hypotheses for complexity timeline.")
+
