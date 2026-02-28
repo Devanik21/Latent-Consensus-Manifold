@@ -127,17 +127,23 @@ def _init():
         st.session_state.universe      = Universe(seed=seed)
         st.session_state.council       = Council(seed=seed)
         st.session_state.seed          = seed
-        st.session_state.task          = None   # current ARCTask object
-        st.session_state.snap          = None   # final blackboard snapshot dict
-        st.session_state.all_logs      = []     # _emit() entries for display
+        st.session_state.task          = None
+        st.session_state.snap          = None
+        st.session_state.all_logs      = []
         st.session_state.n_run         = 0
         st.session_state.n_solved      = 0
-        # Cached stats — updated right after each run so they're never stale
-        st.session_state.stat_avg_rounds     = 0.0
-        st.session_state.stat_skills         = 15
-        st.session_state.stat_gen_series     = []
-        st.session_state.stat_dsl_skills     = []
-        st.session_state.export_logs         = []
+
+    # Safety checks for newly added attributes to prevent AttributeErrors on refresh
+    if "stat_avg_rounds" not in st.session_state:
+        st.session_state.stat_avg_rounds = 0.0
+    if "stat_skills" not in st.session_state:
+        st.session_state.stat_skills = 15
+    if "stat_gen_series" not in st.session_state:
+        st.session_state.stat_gen_series = []
+    if "stat_dsl_skills" not in st.session_state:
+        st.session_state.stat_dsl_skills = []
+    if "export_logs" not in st.session_state:
+        st.session_state.export_logs = []
 
 _init()
 
