@@ -212,7 +212,7 @@ def _agent_html(agent: str, message: str, rnd: int) -> str:
 
 def _verdict_badge(verdict: str) -> str:
     styles = {
-        "solved":  ("badge-solved",   "#14532d", "#86efac", "✅"),
+        "solved":  ("badge-solved",   "#14532d", "#86efac", "Verified"),
         "unknown": ("badge-unknown",  "#431407", "#fdba74", "❓"),
         "timeout": ("badge-timeout",  "#1e1b4b", "#a5b4fc", "⏱️"),
         "pending": ("badge-pending",  "#0f172a", "#64748b", "⏳"),
@@ -322,7 +322,7 @@ mc = st.columns(4)
 mc[0].metric("SOTA 2026 (Gemini 3 Deep Think)", "84.6%")
 mc[1].metric("Human Baseline", "~80%")
 mc[2].metric("Our Goal", "Sample Efficiency + Transparency")
-mc[3].metric("0-Cheat", "✅ Enforced")
+mc[3].metric("0-Cheat", "Verified Enforced")
 st.divider()
 
 # ─── RUN THE COUNCIL ──────────────────────────────────────────────────────────
@@ -546,7 +546,7 @@ with tab2:
         sc1.metric("Initial Surprise", f"{surprise[0]:.3f}")
         sc2.metric("Final Surprise",   f"{surprise[-1]:.3f}")
         sc3.metric("Peak Surprise",    f"{max(surprise):.3f}")
-        sc4.metric("Resolved?",        "✅ Yes" if surprise[-1] < 0.05 else "❌ No")
+        sc4.metric("Resolved?",        "Verified Yes" if surprise[-1] < 0.05 else "❌ No")
 
         if surprise[-1] < 0.05:
             st.success("🎯 Surprise resolved to near-zero — the Council has **understood** the task physics.")
@@ -602,7 +602,7 @@ with tab3:
         try:
             inp_ex, out_ex = task.train_pairs[0]
             pred_ex = DSL.execute(inp_ex, prims)
-            match = "✅ Exact match" if np.array_equal(pred_ex, out_ex) else "❌ Mismatch"
+            match = "Verified Exact match" if np.array_equal(pred_ex, out_ex) else "❌ Mismatch"
             fig = _grid_fig([
                 (inp_ex,  "Training Input"),
                 (pred_ex, f"Program Output ({match})"),
@@ -1373,7 +1373,7 @@ with tab7:
             else:
                 _no_data("No cross-agent falsifications yet.")
         else:
-            st.success("✅ No falsifications — the Skeptic found nothing to kill!")
+            st.success("Verified No falsifications — the Skeptic found nothing to kill!")
 
     colF3, colF4 = st.columns(2)
     # F3 — Causal Confidence Scatter
@@ -1411,7 +1411,7 @@ with tab7:
             ax.set_rticks([]); ax.tick_params(colors="#475569", labelsize=7)
             st.pyplot(fig, width='stretch'); plt.close(fig)
         else:
-            st.success("✅ No contradictions — a clean solve!")
+            st.success("Verified No contradictions — a clean solve!")
 
     # F5 — Causal Law Rate Over Session
     st.markdown("##### F5 · Causal Law Rate Over Hypotheses")
@@ -1721,7 +1721,7 @@ with tab7:
                 f'<div style="background:#0a0e18;border:1px solid #1c2133;border-radius:10px;padding:16px">'
                 f'<p style="color:#94a3b8;margin:4px 0">⚡ Plateau detections: <b style="color:#fb923c">{n_plateaus}</b></p>'
                 f'<p style="color:#94a3b8;margin:4px 0">🎯 Directives issued: <b style="color:#fbbf24">{n_interv}</b></p>'
-                f'<p style="color:#94a3b8;margin:4px 0">✅ Resolved events: <b style="color:#22c55e">{n_resolved}</b></p>'
+                f'<p style="color:#94a3b8;margin:4px 0">Verified Resolved events: <b style="color:#22c55e">{n_resolved}</b></p>'
                 f'<p style="color:#94a3b8;margin:4px 0">📉 Final surprise: <b style="color:{surp_col_i4}">{surp_val_i4}</b></p>'
                 f'</div>',
                 unsafe_allow_html=True
@@ -1888,5 +1888,6 @@ with tab7:
         )
     else:
         _no_data("Need surprise + hypotheses for complexity timeline.")
+
 
 
