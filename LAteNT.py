@@ -19,7 +19,7 @@ from council import Council, DSL
 
 # ─── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Neuro-Symbolic Collective — AGI Lab",
+    page_title="Neuro-Symbolic Collective — General Intelligence Lab",
     page_icon="🌑",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -300,14 +300,14 @@ with st.sidebar:
         st.download_button(
             label="💾 Download Session Data",
             data=json_str,
-            file_name=f"agi_session_{st.session_state.seed}.json",
+            file_name=f"general_intelligence_session_{st.session_state.seed}.json",
             mime="application/json",
             width='stretch'
         )
 
 # ─── HEADER ───────────────────────────────────────────────────────────────────
 st.markdown("#  The Neuro-Symbolic Collective")
-st.markdown("**9-Agent AGI Research System — Inference-Time Discovery on ARC-AGI-2**")
+st.markdown("**9-Agent General Intelligence Research System — Inference-Time Discovery on ARC-General Intelligence-2**")
 
 mc = st.columns(4)
 mc[0].metric("SOTA 2026 (Gemini 3 Deep Think)", "84.6%")
@@ -1748,8 +1748,8 @@ with tab7:
     budget_eff      = 1.0 - (snap.get("budget_used", 100) / 100.0)
     avg_r_norm      = max(0, 1.0 - (st.session_state.stat_avg_rounds / 20.0))
 
-    # J1 — Multi-ring AGI Progress Gauge
-    st.markdown("##### J1 · AGI Progress Multi-Ring Gauge")
+    # J1 — Multi-ring General Intelligence Progress Gauge
+    st.markdown("##### J1 · General Intelligence Progress Multi-Ring Gauge")
     metrics_j1 = [
         ("Solve Rate",        solve_rate,     "#22c55e"),
         ("Skill Reuse",       skill_reuse,    "#38bdf8"),
@@ -1864,13 +1864,13 @@ with tab7:
         st.pyplot(fig, width='stretch'); plt.close(fig)
 
         # Final summary stat card
-        overall_agi = np.mean([solve_rate, skill_reuse, surprise_decay, causal_rate, budget_eff, avg_r_norm])
-        col_agi     = "#22c55e" if overall_agi >= 0.8 else "#f59e0b" if overall_agi >= 0.5 else "#ef4444"
+        overall_gi = np.mean([solve_rate, skill_reuse, surprise_decay, causal_rate, budget_eff, avg_r_norm])
+        col_gi     = "#22c55e" if overall_gi >= 0.8 else "#f59e0b" if overall_gi >= 0.5 else "#ef4444"
         st.markdown(
             f'<div style="background:linear-gradient(135deg,#0f1420,#141b2d);border:1px solid #1e2a40;'
             f'border-radius:14px;padding:22px;margin-top:16px;text-align:center">'
-            f'<p style="color:#64748b;font-size:12px;margin:0">Composite AGI Score (this session)</p>'
-            f'<p style="color:{col_agi};font-size:52px;font-weight:700;margin:8px 0">{overall_agi:.0%}</p>'
+            f'<p style="color:#64748b;font-size:12px;margin:0">Composite General Intelligence Score (this session)</p>'
+            f'<p style="color:{col_gi};font-size:52px;font-weight:700;margin:8px 0">{overall_gi:.0%}</p>'
             f'<p style="color:#475569;font-size:11px;margin:0">Solve Rate · Skill Reuse · Surprise Decay · Causal Law Rate · Budget Efficiency · Round Efficiency</p>'
             f'</div>',
             unsafe_allow_html=True
