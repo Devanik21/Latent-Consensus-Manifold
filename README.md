@@ -432,6 +432,88 @@ Round | Top Hypothesis Confidence | Error | Metacognitor Action
 
 **Key Observation:** Convergence does not occur monotonically. Periods of stagnation (plateau in error rate) trigger Curiosity Engine interventions, which redirect the council's focus. The final convergence typically occurs after 14-23 rounds.
 
+### 4.6 Exemplar Execution Trace: Agent Dialogue
+
+The following dialogue excerpt from a representative task (Rounds 04–17) demonstrates the council's reasoning process in real-time. The sequence reveals plateau detection, program discovery, and eventual convergence:
+
+```
+[R04] 💭 Dreamer: Imagined 8 hypotheses.
+[R04] 🔬 Scientist: No generalizing program found in this round.
+[R04] 🔴 Skeptic: No program to falsify.
+[R04] ⚡ CuriosityEngine: PLATEAU detected (error=0.167). 
+                         Directive: SCIENTIST_EXTEND_SEARCH
+[R04] ⚡ CuriosityEngine: PLATEAU detected (error=0.167). 
+                         Directive: DREAMER_EXPLORE_LOW_CONFIDENCE
+
+[R05] 🎯 Metacognitor: Agenda set: Dreamer → Scientist → Skeptic → CausalReasoner
+[R05] 💭 Dreamer: Imagined 8 hypotheses.
+[R05] 🔬 Scientist: No generalizing program found in this round.
+[R05] 🔴 Skeptic: No program to falsify.
+[R05] ⚡ CuriosityEngine: PLATEAU detected (error=0.167). 
+                         Directive: SCIENTIST_EXTEND_SEARCH
+
+[R06] 🎯 Metacognitor: Agenda set: Dreamer → Scientist → Skeptic → CausalReasoner
+[R06] 💭 Dreamer: Imagined 8 hypotheses.
+[R06] 🔬 Scientist: No generalizing program found in this round.
+[R06] 🔴 Skeptic: No program to falsify.
+
+[R07] 🎯 Metacognitor: Agenda set: Dreamer → Scientist → Skeptic → CausalReasoner
+[R07] 💭 Dreamer: Imagined 8 hypotheses.
+[R07] 🔬 Scientist: Found program: gravity_down → majority_recolor (MDL=2.0)
+[R07] 🔴 Skeptic: No program to falsify.
+[R07] ⚡ CuriosityEngine: Surprise: 0.235 (ongoing)
+
+[R08] 🎯 Metacognitor: Agenda set: Scientist → Skeptic → CausalReasoner
+[R08] 🔬 Scientist: Found program: majority_recolor → gravity_down (MDL=2.0)
+[R08] 🔴 Skeptic: No program to falsify.
+[R08] ⚡ CuriosityEngine: Surprise: 0.167 (ongoing)
+
+[R09] 🎯 Metacognitor: Agenda set: Scientist → Skeptic → CausalReasoner
+[R09] 🔬 Scientist: No generalizing program found in this round.
+[R09] 🔴 Skeptic: No program to falsify.
+[R09] ⚡ CuriosityEngine: PLATEAU detected (error=0.167). 
+                         Directive: DREAMER_EXPLORE_LOW_CONFIDENCE
+
+[R10] 🎯 Metacognitor: Agenda set: Dreamer → Scientist → Skeptic → CausalReasoner
+[R10] 💭 Dreamer: Imagined 8 hypotheses.
+[R10] 🔬 Scientist: Found program: gravity_down → identity → majority_recolor (MDL=3.0)
+[R10] 🔴 Skeptic: No program to falsify.
+[R10] ⚡ CuriosityEngine: PLATEAU detected (error=0.213). 
+                         Directive: SCIENTIST_EXTEND_SEARCH
+
+[R14] 🎯 Metacognitor: Agenda set: Dreamer → Scientist → Skeptic → CausalReasoner
+[R14] 💭 Dreamer: Imagined 8 hypotheses.
+[R14] 🔬 Scientist: Found program: majority_recolor → identity → gravity_down (MDL=3.0)
+[R14] 🔴 Skeptic: No program to falsify.
+[R14] ⚡ CuriosityEngine: PLATEAU detected (error=0.191). 
+                         Directive: SCIENTIST_EXTEND_SEARCH
+
+[R15] 🎯 Metacognitor: Agenda set: Dreamer → Scientist → Skeptic → CausalReasoner
+[R15] 💭 Dreamer: Imagined 8 hypotheses.
+[R15] 🔬 Scientist: Found program: identity → majority_recolor → gravity_down (MDL=3.0)
+[R15] 🔴 Skeptic: No program to falsify.
+[R15] ⚡ CuriosityEngine: PLATEAU detected (error=0.191). 
+                         Directive: SCIENTIST_EXTEND_SEARCH
+
+[R16] 🎯 Metacognitor: Agenda set: Dreamer → Scientist → Skeptic → CausalReasoner
+[R16] 💭 Dreamer: Imagined 8 hypotheses.
+[R16] 🔬 Scientist: Found program: majority_recolor → gravity_up → mirror_v (MDL=3.0)
+[R16] 🔴 Skeptic: No program to falsify.
+[R16] ⚡ CuriosityEngine: PLATEAU detected (error=0.191). 
+                         Directive: SCIENTIST_EXTEND_SEARCH
+
+[R17] 🎯 Metacognitor: Convergence vote: H050_138e00 wins (confidence=0.50).
+[R17] 📚 Archivist: Archived episode. Verdict: solved. Total: 57.
+```
+
+**Dialogue Analysis:**
+
+The trace exhibits characteristic behavior of the council under plateau conditions. Rounds 4–9 demonstrate the Curiosity Engine detecting stagnation (error remaining at 0.167) and issuing directives to redirect exploration. The Scientist agent responds by extending search depth, discovering programs of increasing length (MDL=2.0 → MDL=3.0) as compositional complexity increases.
+
+Note the pattern of program discovery: the Scientist identifies multiple candidate programs with equivalent MDL scores (e.g., rounds 14–16 all yield MDL=3.0). The Metacognitor accumulates evidence across these candidates and ultimately declares convergence when confidence reaches sufficient threshold. The final verdict (Round 17) reflects the council's collective assessment rather than any single agent's judgment.
+
+This sequence illustrates the fundamental design principle: reasoning emerges through sustained dialogue rather than singular computation. No agent makes the final decision in isolation; all nine agents contribute evidence that accumulates on the shared blackboard.
+
 ---
 
 ## 5. Interpretability and Explainability
@@ -683,7 +765,78 @@ print(f"Solved: {stats['solved']}")
 
 ---
 
-## 11. References and Further Reading
+
+## 11. Interactive Demonstration
+
+
+### System Screenshots
+
+---
+
+
+![Screenshot_28-2-2026_215632_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/d4c37f09-674a-41f0-b163-27892fcbcfb6)
+![Screenshot_28-2-2026_215641_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/4495ae5a-de54-43cb-891f-83a958646b60)
+![Screenshot_28-2-2026_215653_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/035262db-a642-40ae-9d6c-d4ec3a7e9dd8)
+![Screenshot_28-2-2026_215659_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/c2974d5f-fd9b-45ba-9a3b-4711a06877f3)
+![Screenshot_28-2-2026_21573_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/a9571ce4-baaf-482f-9dc2-ca979d4d0479)
+![Screenshot_28-2-2026_214542_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/35cecfd2-34c9-4db4-a211-cb9237927c13)
+![Screenshot_28-2-2026_214554_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/95b168c5-3053-4910-9ecc-c3a3657f9b7f)
+![Screenshot_28-2-2026_214756_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/e706b1f5-568e-40b5-a39f-758cc76ae6bb)
+![Screenshot_28-2-2026_21484_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/72e21427-87f6-46e3-8cf8-a60518ed6525)
+![Screenshot_28-2-2026_214812_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/bdf4698f-e0c5-410c-bb60-1f91a87ed72a)
+![Screenshot_28-2-2026_214818_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/e7f58cee-0ed7-4e2a-b7b9-82576b0e897c)
+![Screenshot_28-2-2026_214830_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/353d80c8-c863-48cd-985d-196ce2200ca4)
+![Screenshot_28-2-2026_214837_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/b40f92c8-b23a-4953-83a6-3bdfdfaf7b00)
+![Screenshot_28-2-2026_214846_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/cc9b33fb-5a9a-4478-83c4-37dc062f69ce)
+![Screenshot_28-2-2026_214855_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/08e0d506-43e3-4281-83a9-395e975ddf35)
+![Screenshot_28-2-2026_21497_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/88280e67-d110-4fb2-a193-c9e9ad95f2bb)
+![Screenshot_28-2-2026_214931_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/f9bbeea9-4451-457c-827a-5755b4f671e9)
+![Screenshot_28-2-2026_214939_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/73cf8ba9-9536-41a5-892b-1b0be2da9e4d)
+![Screenshot_28-2-2026_214946_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/c78ce7d2-3f35-426b-9d2c-5d7775d7b5a1)
+![Screenshot_28-2-2026_214959_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/e6ad0e59-3e4f-4c91-b8c9-e6fd90069ab3)
+![Screenshot_28-2-2026_21507_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/15e306c3-6f9e-404e-869c-1c6f2c236cc9)
+![Screenshot_28-2-2026_215014_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/95f9cff5-3460-493b-97fd-33a09c819446)
+![Screenshot_28-2-2026_215022_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/5ee1a3cc-83dd-4b04-a849-8c1bfd7d3266)
+![Screenshot_28-2-2026_215029_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/c6a0c075-453a-4951-90fd-6f6115f3337b)
+![Screenshot_28-2-2026_215034_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/f0cb9569-112c-4d47-bac8-bb7d39996ee0)
+![Screenshot_28-2-2026_215039_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/9382640c-7246-45b5-8f21-d9d4522883f2)
+![Screenshot_28-2-2026_215044_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/3b9c7ca7-6053-4381-a178-685147aceef2)
+![Screenshot_28-2-2026_215050_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/f887d793-ac39-4f56-85bd-202bf0c164bc)
+![Screenshot_28-2-2026_21515_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/19284d27-7383-496c-9c67-8b987d66a116)
+![Screenshot_28-2-2026_215110_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/825c7c73-9579-44bc-9cb8-f1af6b9f678e)
+![Screenshot_28-2-2026_215124_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/6c50de05-99ea-42d3-928e-c6980eda5652)
+
+![Screenshot_28-2-2026_215410_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/d59429f7-2805-4a4a-8ac9-dca6150206cf)
+![Screenshot_28-2-2026_215415_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/09f92a5d-8fae-468b-ac8b-586b5dc04440)
+![Screenshot_28-2-2026_215419_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/1eb5b102-f7d0-43d8-a39f-84b132ea68cc)
+![Screenshot_28-2-2026_215426_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/601cda06-8de8-40ca-a890-30f1208bc537)
+![Screenshot_28-2-2026_215430_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/262701e0-fb11-4695-bf96-1c92793cd530)
+![Screenshot_28-2-2026_215434_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/6a53895f-737f-4f25-a43d-25334220039d)
+![Screenshot_28-2-2026_215440_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/7ebdfb23-31b6-4fa6-acf7-4cba3eff2486)
+![Screenshot_28-2-2026_215444_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/f02d74fc-9484-4de5-9ef4-4c2b70c55758)
+![Screenshot_28-2-2026_215451_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/cd4bf6d4-1041-48c1-9ac0-d4963154e4fd)
+![Screenshot_28-2-2026_215455_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/87b44b81-d233-46a6-b79b-67ea9b71f7a5)
+![Screenshot_28-2-2026_21550_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/db314784-1b90-489f-864b-bcae77935fc3)
+![Screenshot_28-2-2026_21554_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/f7a7e128-8ed5-4147-bcc0-71f12f04b24e)
+![Screenshot_28-2-2026_21559_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/d103e0d5-e757-4d3c-969a-863bc5c339ad)
+![Screenshot_28-2-2026_215518_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/033fc8b5-60bb-4aa4-85eb-99b88b61e00c)
+![Screenshot_28-2-2026_215522_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/d3816437-d6a2-4fe9-9844-926a6d9194aa)
+![Screenshot_28-2-2026_215528_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/92b057c5-4fde-4afa-8346-c824a7888448)
+![Screenshot_28-2-2026_215533_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/4851625a-0d1f-4cbf-8d13-2fce93fb9ffd)
+![Screenshot_28-2-2026_215540_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/14dd51ba-d573-4e3f-b383-dad7497baa78)
+![Screenshot_28-2-2026_215546_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/620b1ff4-57da-4617-902c-958cd29c4e90)
+![Screenshot_28-2-2026_215551_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/ff75c24b-aedc-4549-9c7b-bdaaae98c689)
+![Screenshot_28-2-2026_215555_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/8732daef-8875-4898-a846-4958070213ed)
+![Screenshot_28-2-2026_21562_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/33dd7c3f-f868-4307-8302-4ae43b5b6b06)
+![Screenshot_28-2-2026_21568_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/1acacbc5-847f-4146-a31f-c7682de1959a)
+![Screenshot_28-2-2026_215614_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/da880231-1304-4842-88ff-5ac95e48fd88)
+![Screenshot_28-2-2026_215620_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/cf058e1d-ec96-42a3-9867-18865afa18a3)
+![Screenshot_28-2-2026_215626_latentpy-lhgs2sgsznmstuspovpg7a streamlit app](https://github.com/user-attachments/assets/392dca58-9217-4da1-84d6-dae5bbded46f)
+
+
+
+---
+## 12. References and Further Reading
 
 **Program Synthesis:**
 - Gulwani, S. (2015). "Dimensions in Program Synthesis". PPLJ.
@@ -706,7 +859,7 @@ print(f"Solved: {stats['solved']}")
 ## Contact and Attribution
 
 **Author:** Devanik  
-**Contact:** [@devanik2005]  
+**Contact:** [devanik@iisertirupati.ac.in]  
 **GitHub:** https://github.com/Devanik21  
 **Twitter:** @devanik2005  
 
