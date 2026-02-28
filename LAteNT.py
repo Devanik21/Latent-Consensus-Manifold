@@ -137,6 +137,7 @@ def _init():
         st.session_state.stat_skills         = 15
         st.session_state.stat_gen_series     = []
         st.session_state.stat_dsl_skills     = []
+        st.session_state.export_logs         = []
 
 _init()
 
@@ -287,7 +288,7 @@ with st.sidebar:
             "avg_rounds": st.session_state.stat_avg_rounds,
             "skills": st.session_state.stat_dsl_skills,
             "generalization": st.session_state.stat_gen_series,
-            "final_logs": st.session_state.all_logs
+            "cumulative_dialogue_logs": st.session_state.export_logs
         }
         json_str = json.dumps(export_data, indent=2)
         st.download_button(
@@ -341,6 +342,12 @@ if run_btn:
         st.session_state.all_logs = [
             e for e in raw_log if e.get("message", "").strip()
         ]
+
+        # Append to cumulative export log
+        st.session_state.export_logs.append({
+            "task_id": task.task_id,
+            "logs": st.session_state.all_logs
+        })
 
         if final.get("final_verdict") == "solved":
             st.session_state.n_solved += 1
