@@ -17,6 +17,15 @@ import matplotlib.patches as mpatches
 from universe import Universe, ARCTask, DifficultyLevel
 from council import Council, DSL
 
+
+import matplotlib as mpl
+
+# Use a font that supports more symbols or set fallback behavior
+mpl.rcParams['font.family'] = 'sans-serif'
+mpl.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Liberation Sans', 'Bitstream Vera Sans']
+# This allows Matplotlib to handle missing glyphs more gracefully
+mpl.rcParams['axes.unicode_minus'] = False
+
 # ─── PAGE CONFIG ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Neuro-Symbolic Collective — General Intelligence Lab",
@@ -465,7 +474,7 @@ with tab1:
         panels = [(task.test_input, "Test Input")]
         if answer is not None:
             panels.append((answer, "Council's Answer "))
-        panels.append((task.test_output, "Ground Truth ✓"))
+        panels.append((task.test_output, "Ground Truth Completed."))
 
         fig = _grid_fig(panels, cols=len(panels), cell_size=3.0)
         st.pyplot(fig, width='stretch')
@@ -1879,4 +1888,5 @@ with tab7:
         )
     else:
         _no_data("Need surprise + hypotheses for complexity timeline.")
+
 
