@@ -1,0 +1,755 @@
+{
+  "seed": 70290,
+  "tasks_run": 3,
+  "solved": 3,
+  "avg_rounds": 15.0,
+  "skills": [
+    {
+      "name": "identity",
+      "description": "Used to solve T0000_e66fec216f101a79 (fill all enclosed holes with color 5)",
+      "code": "identity(grid)",
+      "origin": "T0000_e66fec216f101a79",
+      "usage_count": 2,
+      "success_rate": 1.0
+    },
+    {
+      "name": "majority_recolor",
+      "description": "Used to solve T0001_b39e0ed021d1c620 (recolor everything to the majority color \u2192 apply rotate180 to all objects)",
+      "code": "majority_recolor(grid)",
+      "origin": "T0001_b39e0ed021d1c620",
+      "usage_count": 2,
+      "success_rate": 1.0
+    },
+    {
+      "name": "rotate180",
+      "description": "Rotate the grid 180 degrees",
+      "code": "rotate(grid, 180)",
+      "origin": "BUILTIN",
+      "usage_count": 1,
+      "success_rate": 1.0
+    },
+    {
+      "name": "sort_by_size",
+      "description": "Sort objects left-to-right by ascending size",
+      "code": "sort_objects(grid, key='size')",
+      "origin": "BUILTIN",
+      "usage_count": 1,
+      "success_rate": 1.0
+    },
+    {
+      "name": "rotate90",
+      "description": "Rotate the grid 90 degrees clockwise",
+      "code": "rotate(grid, 90)",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "mirror_h",
+      "description": "Mirror horizontally",
+      "code": "mirror(grid, axis='h')",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "mirror_v",
+      "description": "Mirror vertically",
+      "code": "mirror(grid, axis='v')",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "gravity_down",
+      "description": "Pull all cells downward",
+      "code": "gravity(grid, dir='down')",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "gravity_up",
+      "description": "Pull all cells upward",
+      "code": "gravity(grid, dir='up')",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "recolor",
+      "description": "Change one color to another",
+      "code": "recolor(grid, from_c, to_c)",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "fill_enclosed",
+      "description": "Fill enclosed holes with a color",
+      "code": "fill_enclosed(grid, fill_color)",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "majority_color",
+      "description": "Find the color covering the most area",
+      "code": "majority_color(grid)",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "minority_color",
+      "description": "Find the color covering the least area",
+      "code": "minority_color(grid)",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "count_if",
+      "description": "Count objects matching a predicate",
+      "code": "count_if(objects, predicate)",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "filter_by",
+      "description": "Keep only objects matching a predicate",
+      "code": "filter_by(objects, predicate)",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "largest_object",
+      "description": "Find the object with most cells",
+      "code": "largest(objects)",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    },
+    {
+      "name": "smallest_object",
+      "description": "Find the object with fewest cells",
+      "code": "smallest(objects)",
+      "origin": "BUILTIN",
+      "usage_count": 0,
+      "success_rate": 1.0
+    }
+  ],
+  "generalization": [
+    {
+      "task_id": "T0000_e66fec216f101a79",
+      "rounds": 15,
+      "verdict": "solved"
+    },
+    {
+      "task_id": "T0001_b39e0ed021d1c620",
+      "rounds": 15,
+      "verdict": "solved"
+    },
+    {
+      "task_id": "T0002_3298db5ec471d131",
+      "rounds": 15,
+      "verdict": "solved"
+    }
+  ],
+  "final_logs": [
+    {
+      "round": 2,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "Surprise: 0.140 (ongoing)",
+      "data": {},
+      "timestamp": 1772263089.927
+    },
+    {
+      "round": 3,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263089.928
+    },
+    {
+      "round": 3,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263089.938
+    },
+    {
+      "round": 3,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263089.94
+    },
+    {
+      "round": 3,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263089.941
+    },
+    {
+      "round": 3,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263089.942
+    },
+    {
+      "round": 4,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263089.943
+    },
+    {
+      "round": 4,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263089.946
+    },
+    {
+      "round": 4,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263089.962
+    },
+    {
+      "round": 4,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263089.964
+    },
+    {
+      "round": 4,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263089.965
+    },
+    {
+      "round": 4,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263089.967
+    },
+    {
+      "round": 5,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263089.967
+    },
+    {
+      "round": 5,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263089.971
+    },
+    {
+      "round": 5,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263089.982
+    },
+    {
+      "round": 5,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263089.983
+    },
+    {
+      "round": 5,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263089.985
+    },
+    {
+      "round": 5,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263089.986
+    },
+    {
+      "round": 6,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263089.987
+    },
+    {
+      "round": 6,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263089.989
+    },
+    {
+      "round": 6,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263090.0
+    },
+    {
+      "round": 6,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263090.001
+    },
+    {
+      "round": 6,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263090.003
+    },
+    {
+      "round": 6,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263090.005
+    },
+    {
+      "round": 7,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263090.005
+    },
+    {
+      "round": 7,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263090.008
+    },
+    {
+      "round": 7,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263090.019
+    },
+    {
+      "round": 7,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263090.021
+    },
+    {
+      "round": 7,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263090.023
+    },
+    {
+      "round": 7,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263090.025
+    },
+    {
+      "round": 8,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263090.026
+    },
+    {
+      "round": 8,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263090.028
+    },
+    {
+      "round": 8,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263090.041
+    },
+    {
+      "round": 8,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263090.043
+    },
+    {
+      "round": 8,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263090.044
+    },
+    {
+      "round": 8,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263090.046
+    },
+    {
+      "round": 9,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263090.047
+    },
+    {
+      "round": 9,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263090.049
+    },
+    {
+      "round": 9,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263090.061
+    },
+    {
+      "round": 9,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263090.063
+    },
+    {
+      "round": 9,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263090.065
+    },
+    {
+      "round": 9,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263090.07
+    },
+    {
+      "round": 10,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263090.071
+    },
+    {
+      "round": 10,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263090.074
+    },
+    {
+      "round": 10,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263090.083
+    },
+    {
+      "round": 10,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263090.085
+    },
+    {
+      "round": 10,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.118). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263090.087
+    },
+    {
+      "round": 10,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.118). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263090.089
+    },
+    {
+      "round": 11,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263090.089
+    },
+    {
+      "round": 11,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263090.092
+    },
+    {
+      "round": 11,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263090.101
+    },
+    {
+      "round": 11,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263090.103
+    },
+    {
+      "round": 11,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263090.105
+    },
+    {
+      "round": 11,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.140). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263090.106
+    },
+    {
+      "round": 12,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263090.107
+    },
+    {
+      "round": 12,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263090.11
+    },
+    {
+      "round": 12,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "Found program: sort_by_size \u2192 identity \u2192 majority_recolor (MDL=3.0)",
+      "data": {},
+      "timestamp": 1772263090.121
+    },
+    {
+      "round": 12,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263090.122
+    },
+    {
+      "round": 12,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.096). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263090.125
+    },
+    {
+      "round": 12,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.096). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263090.127
+    },
+    {
+      "round": 13,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263090.127
+    },
+    {
+      "round": 13,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263090.13
+    },
+    {
+      "round": 13,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "Found program: identity \u2192 sort_by_size \u2192 majority_recolor (MDL=3.0)",
+      "data": {},
+      "timestamp": 1772263090.144
+    },
+    {
+      "round": 13,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263090.146
+    },
+    {
+      "round": 13,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.096). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263090.148
+    },
+    {
+      "round": 13,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.096). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263090.15
+    },
+    {
+      "round": 14,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Agenda set: Dreamer \u2192 Scientist \u2192 Skeptic \u2192 CausalReasoner",
+      "data": {},
+      "timestamp": 1772263090.15
+    },
+    {
+      "round": 14,
+      "agent": "Dreamer",
+      "action": "speak",
+      "message": "Imagined 8 hypotheses.",
+      "data": {},
+      "timestamp": 1772263090.153
+    },
+    {
+      "round": 14,
+      "agent": "Scientist",
+      "action": "speak",
+      "message": "No generalizing program found in this round.",
+      "data": {},
+      "timestamp": 1772263090.163
+    },
+    {
+      "round": 14,
+      "agent": "Skeptic",
+      "action": "speak",
+      "message": "No program to falsify.",
+      "data": {},
+      "timestamp": 1772263090.165
+    },
+    {
+      "round": 14,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.096). Directive: SCIENTIST_EXTEND_SEARCH",
+      "data": {},
+      "timestamp": 1772263090.167
+    },
+    {
+      "round": 14,
+      "agent": "CuriosityEngine",
+      "action": "speak",
+      "message": "PLATEAU detected (error=0.096). Directive: DREAMER_EXPLORE_LOW_CONFIDENCE",
+      "data": {},
+      "timestamp": 1772263090.168
+    },
+    {
+      "round": 15,
+      "agent": "Metacognitor",
+      "action": "speak",
+      "message": "Convergence vote: H050_a7ccff wins (confidence=0.50).",
+      "data": {},
+      "timestamp": 1772263090.169
+    },
+    {
+      "round": 15,
+      "agent": "Archivist",
+      "action": "speak",
+      "message": "Archived episode. Verdict: solved. Total: 3.",
+      "data": {},
+      "timestamp": 1772263090.17
+    }
+  ]
+}
