@@ -278,6 +278,26 @@ with st.sidebar:
     st.divider()
     st.caption("0-Cheat · Zero Memorisation · Full Transparency")
 
+    import json
+    if st.session_state.n_run > 0:
+        export_data = {
+            "seed": st.session_state.seed,
+            "tasks_run": st.session_state.n_run,
+            "solved": st.session_state.n_solved,
+            "avg_rounds": st.session_state.stat_avg_rounds,
+            "skills": st.session_state.stat_dsl_skills,
+            "generalization": st.session_state.stat_gen_series,
+            "final_logs": st.session_state.all_logs
+        }
+        json_str = json.dumps(export_data, indent=2)
+        st.download_button(
+            label="💾 Download Session Data",
+            data=json_str,
+            file_name=f"agi_session_{st.session_state.seed}.json",
+            mime="application/json",
+            use_container_width=True
+        )
+
 # ─── HEADER ───────────────────────────────────────────────────────────────────
 st.markdown("#  The Neuro-Symbolic Collective")
 st.markdown("**9-Agent AGI Research System — Inference-Time Discovery on ARC-AGI-2**")
