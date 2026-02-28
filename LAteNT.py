@@ -381,7 +381,7 @@ if task is None:
     | ⚡ **Surprise Metric** | Prediction error decaying to zero = understanding |
     | 🔬 **Program Inspector** | The discovered DSL rule in human-readable pseudocode |
     | 🔴 **Skeptic's Dossier** | Every falsified hypothesis — proof of depth |
-    | 📉 **Generalization Curve** | Rounds-to-solve over time — the AGI proof |
+    | 📉 **Generalization Curve** | Rounds-to-solve over time — the General Intelligence proof |
     | 📚 **Skill Library** | The growing vocabulary of discovered primitives |
     """)
     st.stop()
