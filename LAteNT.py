@@ -13,6 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
+import matplotlib as mpl
 
 from universe import Universe, ARCTask, DifficultyLevel, TaskDomain
 from memory import LatentSkillLibrary
@@ -2076,5 +2077,6 @@ with tab7:
         )
     else:
         _no_data("Need surprise + hypotheses for complexity timeline.")
+
 
 
