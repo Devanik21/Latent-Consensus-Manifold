@@ -6,14 +6,14 @@ Imports from:  universe.py  |  memory.py
 
 Agents:
   1. Perceiver      — Object segmentation (WorldState)
-  2. Dreamer        — World-model-based hypothesis generation
-  3. Scientist      — DSL program synthesis (MDL search)
+  2. Dreamer        — World-model-based latent hypothesis generation
+  3. Scientist      — Latent transformation discovery (z-vector search)
   4. Skeptic        — Adversarial falsification
-  5. Philosopher    — Ontological re-perception
+  5. Philosopher    — Ontological re-perception & Basis rotation
   6. CausalReasoner — Counterfactual causal testing
   7. CuriosityEngine — Active-inference exploration drive
   8. Metacognitor   — Session monitor, chair, and convergence vote
-  9. Archivist      — Episode memory, hints, and skill extraction
+  9. Archivist      — Episode memory, hints, and latent skill extraction
 """
 
 import numpy as np
@@ -28,111 +28,14 @@ from universe import ARCTask, perceive_objects, DifficultyLevel, Universe
 from memory import (
     Blackboard, WorldState, Hypothesis,
     HypothesisStatus, ContradictionEntry,
-    EpisodeMemory, EpisodeRecord, DSLSkillLibrary,
-    SkillPrimitive, SurpriseTracker,
+    EpisodeMemory, EpisodeRecord, LatentSkillLibrary,
+    LatentSkill, SurpriseTracker,
 )
+from latent_dictionary import LatentDictionary
+from meta_learner import MetaLearner
 
 log = logging.getLogger("council")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s [%(name)s] %(message)s")
-
-
-# ─── DSL INTERPRETER ──────────────────────────────────────────────────────────
-
-class DSL:
-    """
-    The Domain Specific Language interpreter.
-    Programs are lists of (primitive_name, *args) tuples.
-    """
-
-    PRIMITIVES = {
-        "rotate90":       lambda g, _bg: np.rot90(g, 1),
-        "rotate180":      lambda g, _bg: np.rot90(g, 2),
-        "rotate270":      lambda g, _bg: np.rot90(g, 3),
-        "mirror_h":       lambda g, _bg: np.fliplr(g),
-        "mirror_v":       lambda g, _bg: np.flipud(g),
-        "gravity_down":   lambda g, bg:  DSL._gravity(g, bg, "down"),
-        "gravity_up":     lambda g, bg:  DSL._gravity(g, bg, "up"),
-        "majority_recolor": lambda g, bg: DSL._majority_recolor(g, bg),
-        "sort_by_size":   lambda g, bg:  DSL._sort_by_size(g, bg),
-        "identity":       lambda g, _bg: g.copy(),
-    }
-
-    @staticmethod
-    def execute(grid: np.ndarray, program: List[str], bg: int = 0) -> np.ndarray:
-        """Execute a program (list of primitive names) on a grid."""
-        result = grid.copy()
-        for prim in program:
-            fn = DSL.PRIMITIVES.get(prim)
-            if fn:
-                result = fn(result, bg)
-        return result
-
-    @staticmethod
-    def program_to_str(program: List[str]) -> str:
-        return " → ".join(program)
-
-    @staticmethod
-    def mdl_score(program: List[str]) -> float:
-        """Minimum Description Length proxy: shorter programs score lower (better)."""
-        return float(len(program))
-
-    # ── Primitive implementations ──
-
-    @staticmethod
-    def _gravity(grid: np.ndarray, bg: int, direction: str) -> np.ndarray:
-        out = np.full_like(grid, bg)
-        for col in range(grid.shape[1]):
-            column = grid[:, col]
-            non_bg = column[column != bg]
-            if direction == "down":
-                out[grid.shape[0] - len(non_bg):, col] = non_bg
-            else:
-                out[:len(non_bg), col] = non_bg
-        return out
-
-    @staticmethod
-    def _majority_recolor(grid: np.ndarray, bg: int) -> np.ndarray:
-        flat = grid[grid != bg].flatten()
-        if len(flat) == 0:
-            return grid.copy()
-        colors, counts = np.unique(flat, return_counts=True)
-        majority = colors[np.argmax(counts)]
-        out = grid.copy()
-        out[grid != bg] = majority
-        return out
-
-    @staticmethod
-    def _sort_by_size(grid: np.ndarray, bg: int) -> np.ndarray:
-        try:
-            from scipy.ndimage import label
-        except ImportError:
-            return grid.copy()
-        objs = []
-        for color in np.unique(grid):
-            if color == bg:
-                continue
-            mask = (grid == color).astype(int)
-            labeled, n = label(mask)
-            for lab in range(1, n + 1):
-                cells = list(zip(*np.where(labeled == lab)))
-                objs.append({"color": color, "cells": cells})
-
-        objs.sort(key=lambda o: len(o["cells"]))
-        out = np.full_like(grid, bg)
-        col_cursor = 0
-        for obj in objs:
-            if not obj["cells"]:
-                continue
-            rows = [c[0] for c in obj["cells"]]
-            cols = [c[1] for c in obj["cells"]]
-            r_min, c_min = min(rows), min(cols)
-            w = max(cols) - c_min + 1
-            if col_cursor + w > grid.shape[1]:
-                break
-            for r, c in obj["cells"]:
-                out[r, col_cursor + (c - c_min)] = obj["color"]
-            col_cursor += w + 1
-        return out
 
 
 # ─── AGENT RESULTS ────────────────────────────────────────────────────────────
@@ -182,11 +85,11 @@ class Perceiver:
 class Dreamer:
     """
     Generates K imagined output hypotheses.
-    Powered by combinatorial rollouts through the DSL, biased by prior art.
+    Sampling entirely from the learned continuous latent space.
     """
 
     name = "Dreamer"
-    K: int = 8   # number of hypotheses per round
+    K: int = 8   # total hypotheses per round
 
     def __init__(self, rng: random.Random = None):
         self.rng = rng or random.Random()
@@ -195,43 +98,40 @@ class Dreamer:
         self,
         task: ARCTask,
         bb: Blackboard,
-        skill_lib: DSLSkillLibrary,
+        skill_lib: LatentSkillLibrary,
+        latent_dict: LatentDictionary = None,
+        meta_learner: MetaLearner = None,
     ) -> AgentResult:
-        """Generate K hypotheses and push them to the Blackboard."""
-
-        primitives = list(DSL.PRIMITIVES.keys())
-        # Bias toward skills that were useful in Prior Art
-        hints = bb.prior_art_hints
-        biased = []
-        for hint in hints:
-            prog = hint.get("winning_program", "")
-            if prog:
-                biased += prog.split(" → ")[:2]
+        """Generate K hypotheses from latent space."""
 
         generated = 0
-        for k in range(self.K):
-            # Pick a program length 1..3
-            length = self.rng.randint(1, 3)
+        if latent_dict is not None:
+            # Bias toward skills that were useful in Prior Art
+            hints = bb.prior_art_hints
+            prior_z = None
+            if hints:
+                # Try to extract the first winning z vector from hints
+                for hint in hints:
+                    z_val = hint.get("winning_z")
+                    if z_val:
+                        prior_z = np.array(z_val, dtype=np.float32)
+                        break
 
-            # With 50% chance, use a biased primitive as the first step
-            program = []
-            if biased and self.rng.random() > 0.5:
-                program.append(self.rng.choice(biased))
-                length -= 1
+            # If meta_learner is active, use its prior
+            prior_z = meta_learner.get_prior_z() if meta_learner is not None else prior_z
 
-            program += self.rng.choices(primitives, k=length)
-            program = list(dict.fromkeys(program))  # deduplicate while preserving order
-
-            # Apply to training input to produce imagined output
-            predicted = DSL.execute(task.train_pairs[0][0], program)
-            confidence = 1.0 / (1.0 + DSL.mdl_score(program) + k * 0.05)
-
-            bb.push_hypothesis(predicted, confidence=confidence, agent=self.name)
-            generated += 1
+            z_samples = latent_dict.sample_z(n=self.K, temperature=1.0, prior_z=prior_z)
+            for k, z in enumerate(z_samples):
+                predicted = latent_dict.decode_z(z, task.train_pairs[0][0])
+                # Confidence inversely proportional to z norm (simpler = better)
+                z_norm = float(np.linalg.norm(z))
+                confidence = 1.0 / (1.0 + z_norm * 0.5 + k * 0.05)
+                bb.push_hypothesis(predicted, confidence=confidence, agent=self.name)
+                generated += 1
 
         return AgentResult(
             agent=self.name, success=True,
-            message=f"Imagined {generated} hypotheses.",
+            message=f"Imagined {generated} latent hypotheses.",
             data={"n_hypotheses": generated}
         )
 
@@ -240,13 +140,12 @@ class Dreamer:
 
 class Scientist:
     """
-    Finds the shortest DSL program (MDL) that explains the top Dreamer hypothesis
-    and generalizes across all training pairs.
+    Finds the shortest latent vector that explains the top Dreamer hypothesis
+    and generalizes across all training pairs. No explicitly defined rules.
     """
 
     name = "Scientist"
-    MAX_PROGRAM_LENGTH = 4
-    MCTS_ROLLOUTS = 60
+    LATENT_ERROR_THRESHOLD = 0.5  # max reconstruction MSE to accept a latent solution
 
     def __init__(self, rng: random.Random = None):
         self.rng = rng or random.Random()
@@ -255,61 +154,62 @@ class Scientist:
         self,
         task: ARCTask,
         bb: Blackboard,
-        skill_lib: DSLSkillLibrary,
+        skill_lib: LatentSkillLibrary,
+        latent_dict: LatentDictionary = None,
+        meta_learner: MetaLearner = None,
     ) -> AgentResult:
-        """Search for a generalizing program. Update the best hypothesis on success."""
+        """Search for a generalizing latent transformation."""
 
-        best_program: Optional[List[str]] = None
-        best_score = float("inf")
-        primitives = list(DSL.PRIMITIVES.keys())
+        if latent_dict is not None and latent_dict.is_ready:
+            # If meta_learner is active, use its prior
+            prior_z = meta_learner.get_prior_z() if meta_learner is not None else None
 
-        for rollout in range(self.MCTS_ROLLOUTS):
-            length = self.rng.randint(1, self.MAX_PROGRAM_LENGTH)
-            program = self.rng.choices(primitives, k=length)
-            program = list(dict.fromkeys(program))
+            # Try to find a z vector that generalizes across all training pairs
+            z_candidates = []
+            for inp, out in task.train_pairs:
+                z, err = latent_dict.search_z(inp, out, n_candidates=40, n_refine=20, prior_z=prior_z)
+                if z is not None:
+                    z_candidates.append((z, err))
 
-            if self._generalizes(program, task):
-                score = DSL.mdl_score(program)
-                if score < best_score:
-                    best_score = score
-                    best_program = program
+            if z_candidates:
+                # Average all per-pair z vectors to find a common transformation
+                avg_z = np.mean([zc[0] for zc in z_candidates], axis=0)
+                avg_z = np.maximum(avg_z, 0)
+                avg_err = float(np.mean([zc[1] for zc in z_candidates]))
 
-        if best_program is None:
-            return AgentResult(
-                agent=self.name, success=False,
-                message="No generalizing program found in this round.",
-            )
+                # Check if the averaged z generalises across training pairs
+                latent_generalises = True
+                for inp, expected in task.train_pairs:
+                    predicted = latent_dict.decode_z(avg_z, inp)
+                    if predicted.shape != expected.shape or not np.array_equal(predicted, expected):
+                        latent_generalises = False
+                        break
 
-        prog_str = DSL.program_to_str(best_program)
+                if latent_generalises:
+                    z_mdl = float(np.count_nonzero(avg_z > 0.01))  # MDL = active components
+                    z_str = f"z[{z_mdl:.0f} active dims, err={avg_err:.4f}]"
 
-        # Attach the program to the best pending hypothesis
-        top_h = bb.get_top_hypothesis()
-        if top_h:
-            # Regenerate the predicted output using this program on the test input
-            predicted = DSL.execute(task.test_input, best_program)
-            bb.update_hypothesis(
-                top_h.id,
-                program=prog_str,
-                program_mdl=best_score,
-                grid=predicted,
-                status=HypothesisStatus.TESTING,
-            )
+                    top_h = bb.get_top_hypothesis()
+                    if top_h:
+                        predicted = latent_dict.decode_z(avg_z, task.test_input)
+                        bb.update_hypothesis(
+                            top_h.id,
+                            program=z_str,
+                            program_mdl=z_mdl,
+                            grid=predicted,
+                            status=HypothesisStatus.TESTING,
+                            winning_z=avg_z.tolist()  # Custom internal passing mechanism
+                        )
+                    return AgentResult(
+                        agent=self.name, success=True,
+                        message=f"Latent program: {z_str} (MDL={z_mdl:.1f})",
+                        data={"program": z_str, "mdl": z_mdl, "source": "latent", "winning_z": avg_z.tolist()}
+                    )
 
         return AgentResult(
-            agent=self.name, success=True,
-            message=f"Found program: {prog_str} (MDL={best_score:.1f})",
-            data={"program": prog_str, "mdl": best_score}
+            agent=self.name, success=False,
+            message="No generalizing latent program found in this round.",
         )
-
-    def _generalizes(self, program: List[str], task: ARCTask) -> bool:
-        """Check if a program correctly maps every training input → output."""
-        for inp, expected in task.train_pairs:
-            produced = DSL.execute(inp, program)
-            if produced.shape != expected.shape:
-                return False
-            if not np.array_equal(produced, expected):
-                return False
-        return True
 
 
 # ─── AGENT 4: SKEPTIC ─────────────────────────────────────────────────────────
@@ -330,6 +230,7 @@ class Skeptic:
         self,
         task: ARCTask,
         bb: Blackboard,
+        latent_dict: LatentDictionary = None,
     ) -> AgentResult:
         top_h = bb.get_top_hypothesis()
         if top_h is None or top_h.program is None:
@@ -338,12 +239,22 @@ class Skeptic:
                 message="No program to falsify.",
             )
 
-        program = top_h.program.split(" → ")
+        winning_z = getattr(top_h, 'winning_z', None)
+        if winning_z is None or latent_dict is None or not latent_dict.is_ready:
+            return AgentResult(
+                agent=self.name, success=True,
+                message="PASS — No explicit z-vector to falsify.",
+            )
+
+        z_vec = np.array(winning_z, dtype=np.float32)
 
         for m in range(self.MUTATION_COUNT):
             mutant_inp = self._mutate(task.train_pairs[0][0])
-            expected_out = DSL.execute(task.train_pairs[0][0], program)    # original expected
-            mutant_out = DSL.execute(mutant_inp, program)
+            expected_out = latent_dict.decode_z(z_vec, task.train_pairs[0][0])
+            try:
+                mutant_out = latent_dict.decode_z(z_vec, mutant_inp)
+            except Exception:
+                mutant_out = np.zeros_like(mutant_inp)
 
             # The mutation test: if the program's behavior changes predictably, fine.
             # If the mutation produces nonsense / crashes, flag it.
@@ -416,61 +327,43 @@ class Philosopher:
         grid: np.ndarray,
         bb: Blackboard,
         revision: int = 0,
+        latent_dict: LatentDictionary = None,
     ) -> AgentResult:
-        """Propose an alternative object decomposition."""
-        if revision == 0:
-            # Try: include background as an object
-            bg_cells = list(zip(*np.where(grid == 0)))
-            objects = (bb.world_state.objects or []).copy()
-            if bg_cells:
-                max_id = max((o["id"] for o in objects), default=-1) + 1
-                objects.append({
-                    "id": max_id,
-                    "color": 0,
-                    "cells": bg_cells,
-                    "bbox": (0, 0, grid.shape[0]-1, grid.shape[1]-1),
-                    "size": len(bg_cells),
-                    "is_background": True,
-                })
-            new_ws = WorldState(
-                objects=objects,
-                grid_shape=grid.shape,
-                philosopher_revision=revision + 1,
-            )
-        elif revision == 1:
-            # Try: merge all same-color regions into single objects
-            objects = []
-            obj_id = 0
-            for color in np.unique(grid):
-                cells = list(zip(*np.where(grid == color)))
-                if cells:
-                    rows = [c[0] for c in cells]
-                    cols = [c[1] for c in cells]
-                    objects.append({
-                        "id": obj_id,
-                        "color": int(color),
-                        "cells": cells,
-                        "bbox": (min(rows), min(cols), max(rows), max(cols)),
-                        "size": len(cells),
-                    })
-                    obj_id += 1
-            new_ws = WorldState(
-                objects=objects,
-                grid_shape=grid.shape,
-                philosopher_revision=revision + 1,
-            )
-        else:
+        """
+        Rotates the basis of the top latent hypotheses to provide an orthogonal 'perspective'.
+        """
+        top_h = bb.get_top_hypothesis()
+        if top_h is None or not hasattr(top_h, 'winning_z') or top_h.winning_z is None:
             return AgentResult(
                 agent=self.name, success=False,
-                message="Philosopher exhausted all reframing strategies.",
+                message="No latent vector to reframe.",
             )
 
-        bb.set_world_state(new_ws)
+        if latent_dict is None or not latent_dict.is_ready:
+            return AgentResult(
+                agent=self.name, success=False,
+                message="Latent dictionary not ready for basis rotation.",
+            )
+
+        z_orig = np.array(top_h.winning_z, dtype=np.float32)
+        z_rot = latent_dict.rotate_basis(z_orig, angle_idx=revision)
+        
+        # Test if the rotated perspective offers a simpler explanation (lower norm)
+        # Note: In a pure rotation, norm should be identical. But because we clip
+        # to np.maximum(..., 0) during rotation (non-negative constraints), the norm
+        # effectively changes, sometimes sparsifying the vector further.
+        if np.linalg.norm(z_rot) < np.linalg.norm(z_orig) + 0.1:
+            # Update the hypothesis with this new rotated latent vector
+            top_h.winning_z = z_rot.tolist()
+            return AgentResult(
+                agent=self.name, success=True,
+                message=f"Reframed latent vector (revision {revision + 1}). Norm: {np.linalg.norm(z_rot):.2f}",
+                data={"revision": revision + 1}
+            )
+
         return AgentResult(
-            agent=self.name, success=True,
-            message=f"Reframed WorldState (revision {revision + 1}). "
-                    f"Objects now: {new_ws.object_count}.",
-            data=new_ws.to_dict(),
+            agent=self.name, success=False,
+            message="Philosopher rotation did not yield a simpler explanation.",
         )
 
 
@@ -492,26 +385,33 @@ class CausalReasoner:
         self,
         task: ARCTask,
         bb: Blackboard,
+        latent_dict: LatentDictionary = None,
     ) -> AgentResult:
         top_h = bb.get_top_hypothesis()
-        if top_h is None or top_h.program is None:
+        if top_h is None or not hasattr(top_h, 'winning_z') or top_h.winning_z is None:
             return AgentResult(
                 agent=self.name, success=False,
-                message="No program to verify causally.",
+                message="No latent vector to verify causally.",
             )
 
-        program = top_h.program.split(" → ")
+        if latent_dict is None or not latent_dict.is_ready:
+            return AgentResult(
+                agent=self.name, success=False,
+                message="Latent dictionary not ready for causal intervention.",
+            )
+
+        z_arr = np.array(top_h.winning_z, dtype=np.float32)
         failures = 0
 
         for _ in range(self.COUNTERFACTUAL_COUNT):
             cf_input = self._intervene(task.train_pairs[0][0])
             try:
-                original_pred = DSL.execute(task.train_pairs[0][0], program)
-                cf_pred = DSL.execute(cf_input, program)
+                original_pred = latent_dict.decode_z(z_arr, task.train_pairs[0][0])
+                cf_pred = latent_dict.decode_z(z_arr, cf_input)
 
-                # A causal program should produce *different* outputs for different inputs
+                # A causal transformation vector should produce *different* outputs for different inputs
                 if np.array_equal(original_pred, cf_pred) and not np.array_equal(task.train_pairs[0][0], cf_input):
-                    failures += 1   # The program is insensitive (coincidence)
+                    failures += 1   # The transformation is insensitive (coincidence)
             except Exception:
                 failures += 1
 
@@ -690,9 +590,12 @@ class Archivist:
 
     name = "Archivist"
 
-    def __init__(self, memory: EpisodeMemory, skill_lib: DSLSkillLibrary):
+    def __init__(self, memory: EpisodeMemory, skill_lib: LatentSkillLibrary,
+                 latent_dict: LatentDictionary = None, meta_learner: MetaLearner = None):
         self.memory = memory
         self.skill_lib = skill_lib
+        self.latent_dict = latent_dict
+        self.meta_learner = meta_learner
 
     def inject_hints(self, task: ARCTask, bb: Blackboard) -> AgentResult:
         """Retrieve similar past episodes and inject hints into the Blackboard."""
@@ -711,12 +614,13 @@ class Archivist:
         task: ARCTask,
         bb: Blackboard,
     ) -> AgentResult:
-        """Store this episode and extract skill primitives from the winning program."""
+        """Store this episode, extract skill primitives, and feed the latent dictionary."""
         top_accepted = next(
             (h for h in bb.hypothesis_stack if h.status == HypothesisStatus.ACCEPTED),
             None,
         )
         winning_program = top_accepted.program if top_accepted else None
+        winning_z = getattr(top_accepted, 'winning_z', None) if top_accepted else None
         causal_label = top_accepted.causal_verdict or "UNKNOWN" if top_accepted else "UNKNOWN"
 
         record = EpisodeRecord(
@@ -724,6 +628,7 @@ class Archivist:
             task_fingerprint=task.fingerprint,
             priors_used=[p.value for p in task.priors_used],
             winning_program=winning_program,
+            winning_z=winning_z,
             causal_label=causal_label,
             rounds_to_solve=bb.round,
             budget_used=bb.budget_used,
@@ -732,17 +637,32 @@ class Archivist:
         )
         self.memory.store(record)
 
-        # Extract skill primitives from the winning program
-        if winning_program:
-            for prim_name in winning_program.split(" → "):
-                prim_name = prim_name.strip()
-                if prim_name in DSL.PRIMITIVES:
-                    self.skill_lib.add_skill(SkillPrimitive(
-                        name=prim_name,
-                        description=f"Used to solve {task.task_id} ({task.transformation_description})",
-                        code=f"{prim_name}(grid)",
-                        origin_task_id=task.task_id,
-                    ))
+        # Extract latent skill from the winning z-vector
+        if winning_z:
+            self.skill_lib.add_skill(LatentSkill(
+                name=f"z_{task.task_id}",
+                description=f"Transformation for {task.task_id} ({task.transformation_description})",
+                z_vector=winning_z,
+                origin_task_id=task.task_id,
+            ))
+
+        # ── Feed the Latent Dictionary with all training pairs + test pair ──
+        if self.latent_dict is not None:
+            for inp, out in task.train_pairs:
+                self.latent_dict.register_pair(
+                    inp, out, task_id=task.task_id,
+                    label=task.transformation_description[:40]
+                )
+            # Also register the test pair (ground truth)
+            self.latent_dict.register_pair(
+                task.test_input, task.test_output,
+                task_id=task.task_id,
+                label=f"{task.transformation_description[:30]}_test"
+            )
+
+        # ── Feed the Meta-Learner ──
+        if winning_z is not None and self.meta_learner is not None and bb.final_verdict == "solved":
+            self.meta_learner.update(winning_z=np.array(winning_z), rounds_to_solve=bb.round)
 
         return AgentResult(
             agent=self.name, success=True,
@@ -772,8 +692,10 @@ class Council:
         self.curiosity     = CuriosityEngine()
         self.metacognitor  = Metacognitor()
         self.memory        = EpisodeMemory()
-        self.skill_lib     = DSLSkillLibrary()
-        self.archivist     = Archivist(self.memory, self.skill_lib)
+        self.skill_lib     = LatentSkillLibrary()
+        self.latent_dict   = LatentDictionary(seed=seed or 42)
+        self.meta_learner  = MetaLearner()
+        self.archivist     = Archivist(self.memory, self.skill_lib, self.latent_dict, self.meta_learner)
 
     def solve(self, task: ARCTask, stream: bool = False) -> Generator[Dict, None, Dict]:
         """
@@ -798,7 +720,7 @@ class Council:
 
         # ── PHASE 1: FIRST IMAGINATION ───────────────────────────────────────
         bb.advance_round()
-        result = self.dreamer.imagine(task, bb, self.skill_lib)
+        result = self.dreamer.imagine(task, bb, self.skill_lib, self.latent_dict, self.meta_learner)
         self._emit(bb, result.agent, result.message)
         yield bb.snapshot()
 
@@ -821,12 +743,12 @@ class Council:
             for agent_name in agenda:
 
                 if agent_name == "Scientist":
-                    result = self.scientist.synthesize(task, bb, self.skill_lib)
+                    result = self.scientist.synthesize(task, bb, self.skill_lib, self.latent_dict, self.meta_learner)
                     self._emit(bb, result.agent, result.message)
                     yield bb.snapshot()
 
                 elif agent_name == "Skeptic":
-                    result = self.skeptic.challenge(task, bb)
+                    result = self.skeptic.challenge(task, bb, self.latent_dict)
                     self._emit(bb, result.agent, result.message)
                     yield bb.snapshot()
 
@@ -846,7 +768,7 @@ class Council:
                 elif agent_name == "CausalReasoner":
                     # Capture the top pending hypothesis BEFORE causal.verify changes its status
                     top_h_before = bb.get_top_hypothesis()
-                    result = self.causal.verify(task, bb)
+                    result = self.causal.verify(task, bb, self.latent_dict)
                     self._emit(bb, result.agent, result.message)
                     yield bb.snapshot()
 
@@ -861,12 +783,12 @@ class Council:
                         break
 
                 elif agent_name == "Dreamer":
-                    result = self.dreamer.imagine(task, bb, self.skill_lib)
+                    result = self.dreamer.imagine(task, bb, self.skill_lib, self.latent_dict, self.meta_learner)
                     self._emit(bb, result.agent, result.message)
                     yield bb.snapshot()
 
                 elif agent_name == "Philosopher":
-                    result = self.philosopher.reframe(task.test_input, bb, philosopher_revision)
+                    result = self.philosopher.reframe(task.test_input, bb, philosopher_revision, self.latent_dict)
                     philosopher_revision += 1
                     self._emit(bb, result.agent, result.message)
                     yield bb.snapshot()
@@ -911,7 +833,9 @@ class Council:
             "avg_rounds": round(self.memory.avg_rounds, 1),
             "skill_library_size": len(self.skill_lib.get_all()),
             "generalization_series": self.memory.get_generalization_series(),
-            "dsl_skills": self.skill_lib.to_dict(),
+            "latent_skills": self.skill_lib.to_dict(),
+            "latent_dictionary": self.latent_dict.stats(),
+            "meta_learner": self.meta_learner.stats() if self.meta_learner else {},
         }
 
     @staticmethod

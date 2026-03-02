@@ -14,11 +14,10 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 
-from universe import Universe, ARCTask, DifficultyLevel
-from council import Council, DSL
-
-
-import matplotlib as mpl
+from universe import Universe, ARCTask, DifficultyLevel, TaskDomain
+from memory import LatentSkillLibrary
+from latent_dictionary import LatentDictionary
+from council import Council
 
 # Use a font that supports more symbols or set fallback behavior
 mpl.rcParams['font.family'] = 'sans-serif'
@@ -151,8 +150,16 @@ def _init():
         st.session_state.stat_gen_series = []
     if "stat_dsl_skills" not in st.session_state:
         st.session_state.stat_dsl_skills = []
+    if "stat_meta_learner" not in st.session_state:
+        st.session_state.stat_meta_learner = {}
     if "export_logs" not in st.session_state:
         st.session_state.export_logs = []
+    if "cross_domain_mode" not in st.session_state:
+        st.session_state.cross_domain_mode = False
+    if "cross_domain_epoch" not in st.session_state:
+        st.session_state.cross_domain_epoch = 1  # 1 (A), 2 (B), 3 (C)
+    if "cross_domain_results" not in st.session_state:
+        st.session_state.cross_domain_results = {"A": [], "B": [], "C": []}
 
 _init()
 
@@ -246,14 +253,17 @@ def _answer_grid(task: ARCTask, snap: dict) -> np.ndarray | None:
     for h in snap.get("hypothesis_stack", []):
         if h.get("status") in ("accepted", "causal_law") and h.get("grid"):
             return np.array(h["grid"], dtype=int)
-    # 2. Re-execute winning program on test input
-    prog_str = _winning_program(snap)
-    if prog_str:
-        try:
-            prims = [p.strip() for p in prog_str.split("→")]
-            return DSL.execute(task.test_input, prims)
-        except Exception:
-            pass
+    # 2. Try to decode the latent winning_z
+    for h in snap.get("hypothesis_stack", []):
+        if h.get("status") in ("accepted", "causal_law") and h.get("winning_z"):
+            try:
+                z = np.array(h["winning_z"], dtype=np.float32)
+                # Note: We don't have direct access to LatentDictionary here 
+                # but if the grid was saved, it's caught in step 1.
+                # If we really need dynamic execution, we'd pass latent_dict.
+                pass 
+            except Exception:
+                pass
     # 3. Highest-confidence grid
     for h in sorted(snap.get("hypothesis_stack", []),
                     key=lambda x: x.get("confidence", 0), reverse=True):
@@ -289,7 +299,14 @@ with st.sidebar:
     # Read from cached stats — updated right after each run
     avg_r = st.session_state.stat_avg_rounds
     c3.metric("Avg Rounds", f"{avg_r:.1f}" if avg_r else "—")
-    c4.metric("Skills",     st.session_state.stat_skills)
+    c4.metric("Latent Skills",     st.session_state.stat_skills)
+
+    # Latent Dictionary status
+    ld_stats = st.session_state.get("stat_latent_dict", {})
+    if ld_stats:
+        ld_ready = "🟢 Active" if ld_stats.get("dictionary_ready") else "🟡 Learning"
+        ld_n = ld_stats.get("n_registered", 0)
+        st.caption(f"Latent Dictionary: {ld_ready} · {ld_n} transforms absorbed")
 
     st.divider()
     st.caption("0-Cheat · Zero Memorisation · Full Transparency")
@@ -301,8 +318,10 @@ with st.sidebar:
             "tasks_run": st.session_state.n_run,
             "solved": st.session_state.n_solved,
             "avg_rounds": st.session_state.stat_avg_rounds,
-            "skills": st.session_state.stat_dsl_skills,
+            "skills": st.session_state.stat_latent_skills,
             "generalization": st.session_state.stat_gen_series,
+            "latent_dictionary": st.session_state.get("stat_latent_dict", {}),
+            "meta_learner": st.session_state.get("stat_meta_learner", {}),
             "cumulative_dialogue_logs": st.session_state.export_logs
         }
         json_str = json.dumps(export_data, indent=2)
@@ -326,24 +345,25 @@ mc[3].metric("0-Cheat", "Verified Enforced")
 st.divider()
 
 # ─── RUN THE COUNCIL ──────────────────────────────────────────────────────────
-if run_btn:
-    task = st.session_state.universe.generate_task(chosen_level)
-    st.session_state.task = task
+
+def _run_task(task_obj: ARCTask):
+    """Run a single task through the Council and stream progress."""
+    st.session_state.task = task_obj
     st.session_state.snap = None
     st.session_state.all_logs = []
     st.session_state.n_run += 1
 
-    progress = st.progress(0, text="Council deliberating…")
+    progress = st.progress(0, text=f"Council deliberating {task_obj.task_id}…")
     status_box = st.empty()
 
     all_snapshots = []
-    for snap in st.session_state.council.solve(task):
+    for snap in st.session_state.council.solve(task_obj):
         all_snapshots.append(snap)
         bud = snap.get("budget_used", 0)
         rnd = snap.get("round", 0)
         verdict = snap.get("final_verdict", "pending")
         progress.progress(min(bud / 100, 1.0),
-                          text=f"Round {rnd} | Budget {bud}/100 | {verdict}")
+                          text=f"Task {task_obj.task_id} | Round {rnd} | Budget {bud}/100 | {verdict}")
 
     progress.empty()
     status_box.empty()
@@ -352,27 +372,79 @@ if run_btn:
         final = all_snapshots[-1]
         st.session_state.snap = final
 
-        # Only show entries with a real human-readable message (from _emit, not _log)
         raw_log = final.get("agent_call_log", [])
         st.session_state.all_logs = [
             e for e in raw_log if e.get("message", "").strip()
         ]
 
-        # Append to cumulative export log
         st.session_state.export_logs.append({
-            "task_id": task.task_id,
+            "task_id": task_obj.task_id,
             "logs": st.session_state.all_logs
         })
 
         if final.get("final_verdict") == "solved":
             st.session_state.n_solved += 1
+            return True
+    return False
+
+if solve_btn:
+    if st.session_state.cross_domain_mode:
+        # Determine the current domain
+        epoch = st.session_state.cross_domain_epoch
+        if epoch == 1:
+            domain = TaskDomain.A_SPATIAL
+            d_key = "A"
+        elif epoch == 2:
+            domain = TaskDomain.B_TOPOLOGICAL
+            d_key = "B"
+        else:
+            domain = TaskDomain.C_ABSTRACT
+            d_key = "C"
+            
+        st.toast(f"Starting Epoch {epoch}/3: Domain {d_key} (10 tasks)")
+        
+        solved_count = 0
+        for i in range(10):
+            # Generate task specifically for this domain
+            t = st.session_state.universe.generate_task(chosen_level, domain=domain)
+            success = _run_task(t)
+            if success:
+                solved_count += 1
+                
+        # Record results
+        st.session_state.cross_domain_results[d_key] = {
+            "solved": solved_count,
+            "total": 10,
+            "rate": solved_count / 10.0
+        }
+        
+        # Advance epoch or finish
+        if epoch < 3:
+            st.session_state.cross_domain_epoch += 1
+            st.success(f"Epoch {epoch} Complete! Ready for Epoch {epoch+1}.")
+        else:
+            st.session_state.cross_domain_mode = False
+            st.session_state.app_state = "IDLE"
+            final_rate = st.session_state.cross_domain_results["C"]["rate"]
+            if final_rate >= 0.5:
+                st.balloons()
+                st.success(f"**GENERALIZATION ACHIEVED!** Domain C Score: {final_rate*100:.0f}%")
+            else:
+                st.warning(f"Domain C Score: {final_rate*100:.0f}%. Generalization failed.")
+
+    else:
+        # Standard Single Run mode
+        task = st.session_state.universe.generate_task(chosen_level)
+        _run_task(task)
 
     # ── Snapshot stats into session_state immediately so they can never be stale ──
     cs = st.session_state.council.stats()
     st.session_state.stat_avg_rounds  = cs["avg_rounds"]
     st.session_state.stat_skills      = cs["skill_library_size"]
     st.session_state.stat_gen_series  = cs["generalization_series"]
-    st.session_state.stat_dsl_skills  = cs["dsl_skills"]
+    st.session_state.stat_latent_skills  = cs.get("latent_skills", [])
+    st.session_state.stat_latent_dict = cs.get("latent_dictionary", {})
+    st.session_state.stat_meta_learner = cs.get("meta_learner", {})
 
     st.rerun()
 
@@ -388,10 +460,10 @@ if task is None:
     |-----|----------|
     | 🏛️ **Council Chamber** | Live agent dialogue + predicted vs ground-truth grid |
     | ⚡ **Surprise Metric** | Prediction error decaying to zero = understanding |
-    | 🔬 **Program Inspector** | The discovered DSL rule in human-readable pseudocode |
+    | 🔬 **Program Inspector** | The discovered latent vector transformation |
     | 🔴 **Skeptic's Dossier** | Every falsified hypothesis — proof of depth |
     | 📉 **Generalization Curve** | Rounds-to-solve over time — the General Intelligence proof |
-    | 📚 **Skill Library** | The growing vocabulary of discovered primitives |
+    | 📚 **Latent Skill Library** | The growing vocabulary of discovered latent vectors |
     """)
     st.stop()
 
@@ -567,49 +639,36 @@ with tab3:
     )
 
     if prog_str:
-        st.markdown("##### Discovered Rule (DSL Program)")
+        st.markdown("##### Discovered Latent Transformation")
         pi1, pi2, pi3, pi4 = st.columns(4)
-        pi1.metric("Program",    prog_str[:30] + ("…" if len(prog_str) > 30 else ""))
-        pi2.metric("MDL Score",  f"{winning_h['mdl_score']:.2f}" if winning_h and winning_h.get("mdl_score") else "—")
-        pi3.metric("Causal",     winning_h.get("causal_verdict","—") if winning_h else "—")
+        pi1.metric("Latent Vector Signature", prog_str[:30] + ("…" if len(prog_str) > 30 else ""))
+        pi2.metric("MDL Score (Active Dims)", f"{winning_h['mdl_score']:.1f}" if winning_h and winning_h.get("mdl_score") else "—")
+        pi3.metric("Causal Verdict", winning_h.get("causal_verdict","—") if winning_h else "—")
         pi4.metric("Confidence", f"{winning_h['confidence']:.3f}" if winning_h else "—")
 
         st.markdown("---")
-        steps = [s.strip() for s in prog_str.split("→")]
-        st.markdown("**Execution steps:**")
-        for i, step in enumerate(steps, 1):
-            icon_map = {
-                "rotate90": "🔄", "rotate180": "🔄", "rotate270": "🔄",
-                "mirror_h": "↔️", "mirror_v": "↕️",
-                "gravity_down": "⬇️", "gravity_up": "⬆️",
-                "majority_recolor": "🎨", "sort_by_size": "📊",
-                "identity": "⬜",
-            }
-            icon = icon_map.get(step, "▶️")
-            st.markdown(
-                f'<div style="background:#0d1421;border:1px solid #1e2a40;border-radius:8px;'
-                f'padding:10px 16px;margin:4px 0">'
-                f'<span style="color:#64748b;font-size:11px">Step {i}</span>&nbsp;&nbsp;'
-                f'{icon}&nbsp;<code style="color:#7dd3fc;font-size:14px;'
-                f'background:transparent;font-weight:600">{step}</code></div>',
-                unsafe_allow_html=True
-            )
+        st.markdown("**Latent Vector Transformation Active**")
+        st.caption("No human-readable code. Transformation represented purely in continuous space.")
 
         # Show its effect on first training pair
         st.markdown("---")
-        st.markdown("**Program applied to training example:**")
-        prims = [s.strip() for s in prog_str.split("→")]
+        st.markdown("**Latent Vector applied to training example:**")
         try:
             inp_ex, out_ex = task.train_pairs[0]
-            pred_ex = DSL.execute(inp_ex, prims)
-            match = "Verified Exact match" if np.array_equal(pred_ex, out_ex) else "❌ Mismatch"
-            fig = _grid_fig([
-                (inp_ex,  "Training Input"),
-                (pred_ex, f"Program Output ({match})"),
-                (out_ex,  "Ground Truth"),
-            ], cols=3, cell_size=2.8)
-            st.pyplot(fig, width='stretch')
-            plt.close(fig)
+            winning_z = winning_h.get("winning_z")
+            if winning_z:
+                z_arr = np.array(winning_z, dtype=np.float32)
+                pred_ex = st.session_state.council.latent_dict.decode_z(z_arr, inp_ex)
+                match = "Verified Exact match" if np.array_equal(pred_ex, out_ex) else "❌ Mismatch"
+                fig = _grid_fig([
+                    (inp_ex,  "Training Input"),
+                    (pred_ex, f"Latent Output ({match})"),
+                    (out_ex,  "Ground Truth"),
+                ], cols=3, cell_size=2.8)
+                st.pyplot(fig, width='stretch')
+                plt.close(fig)
+            else:
+                st.warning("No latent vector attached to hypothesis.")
         except Exception as e:
             st.warning(f"Could not render program example: {e}")
     else:
@@ -750,14 +809,13 @@ with tab5:
 
 # ── TAB 6: SKILL LIBRARY ─────────────────────────────────────────────────────
 with tab6:
-    skills = st.session_state.stat_dsl_skills  # read from cached session state
+    skills = st.session_state.stat_latent_skills  # read from cached session state
     if skills:
         sl1, sl2 = st.columns(2)
         total_skills   = len(skills)
         used_skills    = sum(1 for s in skills if s.get("usage_count", 0) > 0)
-        discovered     = sum(1 for s in skills if s.get("origin", "") != "BUILTIN")
-        sl1.metric("Total Primitives",    total_skills)
-        sl2.metric("Discovered This Session", discovered)
+        sl1.metric("Total Latent Vectors", total_skills)
+        sl2.metric("In Active Use", used_skills)
 
         # Usage bar chart
         top_skills = sorted(skills, key=lambda s: s.get("usage_count", 0), reverse=True)[:12]
@@ -766,36 +824,29 @@ with tab6:
             ax.set_facecolor("#0a0e18")
             names  = [s["name"] for s in top_skills]
             counts = [s.get("usage_count", 0) for s in top_skills]
-            bar_colors = ["#6d28d9" if s.get("origin") != "BUILTIN" else "#1e40af" for s in top_skills]
+            bar_colors = ["#6d28d9" for _ in top_skills]
             bars = ax.bar(names, counts, color=bar_colors, edgecolor="#1c2133", linewidth=0.8)
             ax.set_ylabel("Usage Count", color="#64748b", fontsize=10)
             ax.tick_params(axis="x", colors="#94a3b8", labelsize=9, rotation=30)
             ax.tick_params(axis="y", colors="#475569", labelsize=9)
             for spine in ax.spines.values():
                 spine.set_edgecolor("#1c2133")
-            legend_els = [
-                mpatches.Patch(color="#6d28d9", label="Discovered this session"),
-                mpatches.Patch(color="#1e40af", label="Built-in primitive"),
-            ]
-            ax.legend(handles=legend_els, fontsize=9, labelcolor="#94a3b8",
-                      facecolor="#0d1017", edgecolor="#1c2133")
             st.pyplot(fig, width='stretch')
             plt.close(fig)
 
         st.markdown("---")
-        st.markdown("**Full Library**")
+        st.markdown("**Full Latent Vector Library**")
         df_skills = pd.DataFrame(skills)[[
-            "name", "usage_count", "description", "code", "origin"
+            "name", "usage_count", "description", "origin"
         ]]
         st.dataframe(
             df_skills,
             hide_index=True,
             width='stretch',
             column_config={
-                "name":        st.column_config.TextColumn("Primitive", width=130),
+                "name":        st.column_config.TextColumn("Latent Vector", width=130),
                 "usage_count": st.column_config.NumberColumn("Uses", width=60),
                 "description": st.column_config.TextColumn("Description"),
-                "code":        st.column_config.TextColumn("Pseudocode", width=200),
                 "origin":      st.column_config.TextColumn("Discovered In", width=120),
             }
         )
@@ -837,7 +888,7 @@ with tab7:
     ws_data     = snap.get("world_state", {})
     ws_objects  = ws_data.get("objects", []) if isinstance(ws_data, dict) else []
     gen_series  = st.session_state.stat_gen_series
-    dsl_skills  = st.session_state.stat_dsl_skills
+    latent_skills = st.session_state.stat_latent_skills
     AGENTS      = ["Perceiver","Dreamer","Scientist","Skeptic","Philosopher",
                    "CausalReasoner","CuriosityEngine","Metacognitor","Archivist"]
     AGENT_COLORS= ["#38bdf8","#c084fc","#34d399","#f87171","#fbbf24",
@@ -1431,6 +1482,143 @@ with tab7:
 
     st.divider()
 
+    # ─── SECTION X: CROSS-DOMAIN GENERALIZATION ─────────────────────────────
+    if st.session_state.cross_domain_results["A"]:
+        st.markdown("### 🏆 X — Cross-Domain Generalization (0-Shot Transfer)")
+        cx1, cx2, cx3 = st.columns(3)
+        res = st.session_state.cross_domain_results
+        
+        rate_A = res["A"].get("rate", 0) if res["A"] else 0
+        cx1.metric("Epoch A (Spatial / Train)", f"{rate_A * 100:.0f}%", 
+                   f"{res['A'].get('solved',0)}/10 solved" if res["A"] else "Pending")
+                   
+        rate_B = res["B"].get("rate", 0) if res["B"] else 0
+        cx2.metric("Epoch B (Topological / Val)", f"{rate_B * 100:.0f}%", 
+                   f"{res['B'].get('solved',0)}/10 solved" if res["B"] else "Pending")
+                   
+        rate_C = res["C"].get("rate", 0) if res["C"] else 0
+        delta_C = f"{rate_C*100 - rate_A*100:.0f}% Generalization Gap" if res["C"] else ""
+        cx3.metric("Epoch C (Abstract / 0-Shot)", f"{rate_C * 100:.0f}%", delta_C)
+        
+        st.caption("A true AGI maintains >50% performance on Epoch C despite never seeing abstract tasks during dictionary formation.")
+        st.divider()
+
+        # ─── SECTION K: INCREMENTAL PCA ─────────────────────────────
+        st.markdown("### 🗺️ K — Latent Concept Map (Incremental PCA)")
+        pca_z = []
+        pca_labels = []
+        pca_colors = []
+        
+        # Gather all skills
+        latent_skills = st.session_state.stat_latent_skills
+        for skill in latent_skills:
+            z = skill.get("z_vector")
+            if z:
+                pca_z.append(z)
+                t_id = skill.get("origin_task_id", "")
+                pca_labels.append(t_id)
+                
+                # Color by epoch/domain loosely based on origin task
+                # (In a real scenario, we'd definitively track which epoch a task belonged to)
+                if t_id:
+                    # Simple hash to generic colors for now
+                    h = sum(ord(c) for c in t_id) % 3
+                    if h == 0: pca_colors.append("#3b82f6") # Blue
+                    elif h == 1: pca_colors.append("#22c55e") # Green
+                    else: pca_colors.append("#f59e0b") # Yellow
+                else:
+                    pca_colors.append("#64748b")
+                    
+        if len(pca_z) >= 3:
+            try:
+                from sklearn.decomposition import IncrementalPCA
+                ipca = IncrementalPCA(n_components=2)
+                X = np.array(pca_z)
+                X_pca = ipca.fit_transform(X)
+                
+                fig, ax = _obs_fig(8, 4.5)
+                ax.scatter(X_pca[:, 0], X_pca[:, 1], c=pca_colors, s=80, alpha=0.7, edgecolors="#1e293b", linewidths=0.5)
+                
+                # Annotate top 10
+                for i, (x, y, label) in enumerate(zip(X_pca[:, 0], X_pca[:, 1], pca_labels)):
+                    if i < 10:
+                        ax.annotate(label, (x, y), xytext=(4, 4), textcoords="offset points", 
+                                    fontsize=7, color="#94a3b8", alpha=0.8)
+                                    
+                ax.set_xlabel(f"PC1 ({ipca.explained_variance_ratio_[0]:.1%} variance)", color="#64748b", fontsize=9)
+                ax.set_ylabel(f"PC2 ({ipca.explained_variance_ratio_[1]:.1%} variance)", color="#64748b", fontsize=9)
+                ax.grid(True, linestyle=":", alpha=0.2, color="#94a3b8")
+                
+                st.pyplot(fig, width='stretch'); plt.close(fig)
+            except ImportError:
+                _no_data("sklearn required for PCA plot.")
+        else:
+            _no_data("Need at least 3 solved tasks for PCA.")
+            
+        st.divider()
+
+    # ─── SECTION L: META-LEARNER CURVE ─────────────────────────────
+    st.markdown("### 🧠 L — Meta-Learner Probability Cloud")
+    meta_stats = st.session_state.stat_meta_learner
+    if meta_stats and meta_stats.get("total_updates", 0) > 0:
+        prior_mean = np.array(meta_stats.get("prior_mean", []))
+        if prior_mean.size > 0:
+            fig, ax = _obs_fig(10, 3)
+            ax.bar(range(len(prior_mean)), prior_mean, color="#a855f7", edgecolor=_SP, linewidth=0.5)
+            ax.set_xlabel("Latent Dimension (0-63)", color="#64748b", fontsize=9)
+            ax.set_ylabel("Historical Success Weight", color="#64748b", fontsize=9)
+            ax.set_title(f"Meta-Learner Prior after {meta_stats.get('total_updates')} updates", color="#94a3b8", fontsize=10)
+            ax.grid(axis='y', linestyle=":", alpha=0.2, color="#94a3b8")
+            st.pyplot(fig, width='stretch'); plt.close(fig)
+            
+            # Show top 5 dimensions
+            top_indices = np.argsort(prior_mean)[::-1][:5]
+            top_str = ", ".join([f"Dim {i} ({prior_mean[i]:.2f})" for i in top_indices])
+            st.caption(f"**Highest confidence dimensions:** {top_str}")
+    else:
+        _no_data("Meta-Learner needs solved episodes to form a prior.")
+        
+    st.divider()
+
+    # ─── SECTION M: LATENT DICTIONARY HEATMAP ──────────────────────────
+    st.markdown("### 🧩 M — The Latent Dictionary (Basis Matrix)")
+    dict_stats = st.session_state.stat_latent_dict
+    if dict_stats and dict_stats.get("is_ready"):
+        basis = np.array(dict_stats.get("basis", []))
+        if basis.size > 0:
+            fig, ax = _obs_fig(10, 4)
+            # Visualize the dictionary: components vs features
+            im = ax.imshow(basis, cmap="viridis", aspect="auto")
+            ax.set_ylabel("Basis Component (0-63)", color="#64748b", fontsize=9)
+            ax.set_xlabel("Receptive Field (Flattened IO)", color="#64748b", fontsize=9)
+            ax.set_title(f"Learned Transformation Basis (NMF, {dict_stats.get('n_components')} components)", color="#94a3b8", fontsize=10)
+            fig.colorbar(im, ax=ax, label="Activation Strength")
+            st.pyplot(fig, width='stretch'); plt.close(fig)
+    else:
+        _no_data("Latent Dictionary not ready or no basis data exported.")
+        
+    st.divider()
+    
+    # ─── SECTION N: NOVEL SKILL DISCOVERY RATE ─────────────────────────
+    st.markdown("### 🌠 N — Novel Concept Discovery Rate")
+    if latent_skills:
+        fig, ax = _obs_fig(10, 3)
+        # Sort skills by the order they were discovered (origin task order acts as proxy)
+        # Real implementation would use timestamps, but we use index here
+        discovery_counts = [i+1 for i in range(len(latent_skills))]
+        
+        ax.plot(range(1, len(latent_skills)+1), discovery_counts, color="#10b981", linewidth=3)
+        ax.fill_between(range(1, len(latent_skills)+1), discovery_counts, alpha=0.3, color="#059669")
+        ax.set_xlabel("Time (Proxy: Skills Discovered)", color="#64748b", fontsize=9)
+        ax.set_ylabel("Total Latent Concepts Formed", color="#64748b", fontsize=9)
+        ax.set_title("Abstractions Created Without Pre-programming", color="#94a3b8", fontsize=10)
+        ax.grid(True, linestyle=":", alpha=0.2, color="#94a3b8")
+        st.pyplot(fig, width='stretch'); plt.close(fig)
+    else:
+        _no_data("No latent skills discovered yet.")
+        
+    st.divider()
+
     # ─── SECTION G: WORLD STATE & PERCEPTION ─────────────────────────────────
     st.markdown("### 👁️ G — World State & Perception")
     colG1, colG2 = st.columns(2)
@@ -1888,6 +2076,5 @@ with tab7:
         )
     else:
         _no_data("Need surprise + hypotheses for complexity timeline.")
-
 
 

@@ -16,13 +16,24 @@ from enum import Enum
 # ─── CORE ENUMS ────────────────────────────────────────────────────────────────
 
 class Prior(Enum):
-    OBJECTNESS    = "objectness"
-    NUMEROSITY    = "numerosity"
+    # Domain A (Spatial / Geometric)
     SYMMETRY      = "symmetry"
-    CAUSALITY     = "causality"
+    
+    # Domain B (Topological / Physical)
+    OBJECTNESS    = "objectness"
     CONTAINMENT   = "containment"
     GRAVITY       = "gravity"
+    
+    # Domain C (Abstract / Logical / Relational)
+    NUMEROSITY    = "numerosity"
+    CAUSALITY     = "causality"
     GOAL          = "goal_directedness"
+
+
+class TaskDomain(Enum):
+    A_SPATIAL    = "A_Spatial"
+    B_TOPOLOGICAL = "B_Topological"
+    C_ABSTRACT   = "C_Abstract"
 
 
 class DifficultyLevel(Enum):
@@ -244,10 +255,23 @@ class Universe:
 
     # ── Public API ─────────────────────────────────────────────────────────
 
-    def generate_task(self, level: DifficultyLevel = DifficultyLevel.L1) -> ARCTask:
-        """Generate a unique ARC task at the specified difficulty level."""
+    def generate_task(
+        self,
+        level: DifficultyLevel = DifficultyLevel.L1,
+        domain: Optional[TaskDomain] = None
+    ) -> ARCTask:
+        """Generate a unique ARC task at the specified difficulty level and domain."""
         n_priors = level.value
+        
+        # Filter priors based on requested domain
         all_priors = list(self._prior_generators.keys())
+        if domain == TaskDomain.A_SPATIAL:
+            all_priors = [Prior.SYMMETRY]
+        elif domain == TaskDomain.B_TOPOLOGICAL:
+            all_priors = [Prior.OBJECTNESS, Prior.CONTAINMENT, Prior.GRAVITY]
+        elif domain == TaskDomain.C_ABSTRACT:
+            all_priors = [Prior.NUMEROSITY, Prior.CAUSALITY, Prior.GOAL]
+            
         chosen_priors = self.rng.sample(all_priors, min(n_priors, len(all_priors)))
 
         for attempt in range(100):
