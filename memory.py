@@ -4,7 +4,7 @@ memory.py — The Shared Free Energy Substrate
 Contains:
   • Blackboard  — the shared, structured working memory for the Council
   • EpisodeMemory — persistent vector store across tasks (Agent 9 — Archivist)
-  • LatentSkillLibrary — growing library of learned reusable latent vectors
+  • DSLSkillLibrary — growing library of learned reusable programs
   • SurpriseTracker — real-time prediction error monitor (for Curiosity Engine)
 """
 
@@ -47,8 +47,8 @@ class Hypothesis:
     grid: np.ndarray
     confidence: float           # dreamer's prediction confidence [0, 1]
     status: HypothesisStatus = HypothesisStatus.PENDING
-    program: Optional[str] = None          # Latent z-vector summary from the Scientist
-    program_mdl: Optional[float] = None   # Number of active dimensions (sparsity)
+    program: Optional[str] = None          # DSL program from the Scientist
+    program_mdl: Optional[float] = None   # Minimum Description Length score
     causal_verdict: Optional[str] = None  # CAUSAL_LAW or COINCIDENCE
     contradiction_count: int = 0
     created_at: float = field(default_factory=time.time)
@@ -310,14 +310,14 @@ class Blackboard:
         return None
 
 
-# ─── LATENT SKILL LIBRARY ───────────────────────────────────────────────────────
+# ─── DSL SKILL LIBRARY ────────────────────────────────────────────────────────
 
 @dataclass
-class LatentSkill:
-    """A reusable transformation vector discovered by the Archivist."""
+class SkillPrimitive:
+    """A reusable sub-program discovered by the Archivist from past successful tasks."""
     name: str
     description: str
-    z_vector: List[float]       # The transformation vector in latent space
+    code: str                 # human-readable pseudocode
     origin_task_id: str
     usage_count: int = 1
     success_rate: float = 1.0
@@ -327,31 +327,58 @@ class LatentSkill:
         return {
             "name": self.name,
             "description": self.description,
+            "code": self.code,
             "origin": self.origin_task_id,
             "usage_count": self.usage_count,
             "success_rate": round(self.success_rate, 3),
         }
 
 
-class LatentSkillLibrary:
+class DSLSkillLibrary:
     """
     The growing vocabulary of the Council's reasoning.
-    Skills are now continuous z-vectors discovered dynamically.
+    Skills are extracted from winning programs after each solved task.
     """
 
     def __init__(self):
-        self._skills: Dict[str, LatentSkill] = {}
+        self._skills: Dict[str, SkillPrimitive] = {}
+        self._register_primitives()
 
-    def add_skill(self, skill: LatentSkill) -> None:
-        if skill.name in self._skills:
-            self._skills[skill.name].usage_count += 1
+    def _register_primitives(self) -> None:
+        """Seed with foundational DSL primitives."""
+        builtins = [
+            ("rotate90",       "Rotate the grid 90 degrees clockwise",           "rotate(grid, 90)"),
+            ("rotate180",      "Rotate the grid 180 degrees",                    "rotate(grid, 180)"),
+            ("mirror_h",       "Mirror horizontally",                            "mirror(grid, axis='h')"),
+            ("mirror_v",       "Mirror vertically",                              "mirror(grid, axis='v')"),
+            ("gravity_down",   "Pull all cells downward",                        "gravity(grid, dir='down')"),
+            ("gravity_up",     "Pull all cells upward",                          "gravity(grid, dir='up')"),
+            ("recolor",        "Change one color to another",                    "recolor(grid, from_c, to_c)"),
+            ("fill_enclosed",  "Fill enclosed holes with a color",               "fill_enclosed(grid, fill_color)"),
+            ("majority_color", "Find the color covering the most area",          "majority_color(grid)"),
+            ("minority_color", "Find the color covering the least area",         "minority_color(grid)"),
+            ("sort_by_size",   "Sort objects left-to-right by ascending size",   "sort_objects(grid, key='size')"),
+            ("count_if",       "Count objects matching a predicate",             "count_if(objects, predicate)"),
+            ("filter_by",      "Keep only objects matching a predicate",         "filter_by(objects, predicate)"),
+            ("largest_object", "Find the object with most cells",                "largest(objects)"),
+            ("smallest_object","Find the object with fewest cells",              "smallest(objects)"),
+        ]
+        for name, desc, code in builtins:
+            self._skills[name] = SkillPrimitive(
+                name=name, description=desc, code=code,
+                origin_task_id="BUILTIN", usage_count=0
+            )
+
+    def add_skill(self, primitive: SkillPrimitive) -> None:
+        if primitive.name in self._skills:
+            self._skills[primitive.name].usage_count += 1
         else:
-            self._skills[skill.name] = skill
+            self._skills[primitive.name] = primitive
 
-    def get_all(self) -> List[LatentSkill]:
+    def get_all(self) -> List[SkillPrimitive]:
         return sorted(self._skills.values(), key=lambda s: s.usage_count, reverse=True)
 
-    def get_hints_for(self, description_keywords: List[str]) -> List[LatentSkill]:
+    def get_hints_for(self, description_keywords: List[str]) -> List[SkillPrimitive]:
         """Return skills whose descriptions match any of the keywords."""
         hits = []
         for skill in self._skills.values():
@@ -371,13 +398,12 @@ class EpisodeRecord:
     task_id: str
     task_fingerprint: str
     priors_used: List[str]
-    winning_program: Optional[str] # Human-readable string or z_vector summary
+    winning_program: Optional[str]
     causal_label: str          # "CAUSAL_LAW" | "COINCIDENCE" | "UNKNOWN"
     rounds_to_solve: int
     budget_used: int
     surprise_arc: List[float]  # the full surprise history for this task
     verdict: str               # "solved" | "unknown" | "timeout"
-    winning_z: Optional[List[float]] = None # Discovered latent vector
     embedding: Optional[np.ndarray] = None   # for nearest-neighbor retrieval
     created_at: float = field(default_factory=time.time)
 
@@ -514,22 +540,18 @@ if __name__ == "__main__":
     h = bb.push_hypothesis(g, confidence=0.8)
     print("Blackboard snapshot keys:", list(bb.snapshot().keys()))
 
-    lib = LatentSkillLibrary()
-    print(f"\nLatent Library — {len(lib.get_all())} skills loaded.")
+    lib = DSLSkillLibrary()
+    print(f"\nDSL Library — {len(lib.get_all())} primitives loaded.")
 
     mem = EpisodeMemory()
-    from universe import ARCTask, DifficultyLevel, Universe # universe import correction
+    from universe import Universe, DifficultyLevel
     u = Universe(seed=7)
-    task = u.generate_task(DifficultyLevel.L1)
-    
-    # Mocking a latent skill
-    z_mock = [0.1] * 64
+    task = u.generate_task(DifficultyLevel.L2)
     mem.store(EpisodeRecord(
         task_id=task.task_id,
         task_fingerprint=task.fingerprint,
         priors_used=[p.value for p in task.priors_used],
-        winning_program="z[8 active dims]",
-        winning_z=z_mock,
+        winning_program="sort_objects(grid, key='size')",
         causal_label="CAUSAL_LAW",
         rounds_to_solve=4,
         budget_used=12,
